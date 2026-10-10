@@ -5,7 +5,7 @@ La interfaz toma como referencia visual la imagen suministrada por el usuario: p
 - `src/web/index.html`: panel de conversación, bienvenida y controles existentes.
 - `src/web/styles.css`: composición adaptable, estados de foco y movimiento reducido.
 - `src/web/assets/assistant.svg`: avatar vectorial decorativo.
-- `src/web/assets/chat-background.png`: fotografía generada con IA para este diseño.
+- `src/web/assets/chat-background.png`: imagen de fondo preparada con la herramienta de imágenes a partir de la fotografía adjunta del usuario (mujer con portátil). Es una versión reprocesada con IA, no una copia binaria del archivo original; puede presentar diferencias en detalles del rostro y la escena.
 - `src/web/chat.js`: estado de conexión y procesamiento derivado de la sesión.
 
 Las imágenes se sirven desde el propio aplicativo, sin llamadas a servicios de imágenes externos. El servidor permite únicamente sus rutas explícitas. El diseño no modifica contratos, datos del proveedor, permisos de confirmación ni reglas de simulación.
@@ -14,4 +14,4 @@ En escritorio, el chat aparece a la izquierda y la bienvenida junto a la fotogra
 
 Validación: revisión de capturas en 1440×1080 y 390×844, recursos servidos correctamente, ausencia de desbordamiento horizontal y errores JavaScript, y ejecución de la suite funcional E2E. No se afirma una auditoría exhaustiva de accesibilidad o cobertura en todos los navegadores.
 
-Actualización de color: paneles, botones, burbujas, foco, avatar y tonos del fondo utilizan verde manzana y texto verde oscuro. El cambio de fotografía solicitado queda pendiente de recibir el JPG/PNG original: la imagen incrustada en el mensaje no está disponible como archivo descargable en este entorno. Por ahora se conserva la fotografía anterior y no se afirma haber incorporado la nueva.
+Actualización visual: paneles, botones, burbujas, foco, avatar y tonos del fondo utilizan verde manzana y texto verde oscuro. El fondo anterior se reemplazó por la versión preparada de la nueva referencia. Las transparencias verdes se aplican en CSS, sin incorporarlas a la fotografía. Si se necesita identidad exacta con el original, se debe reemplazar este recurso por el JPG/PNG original disponible como archivo.
