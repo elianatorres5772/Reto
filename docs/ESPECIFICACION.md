@@ -52,3 +52,9 @@ Un paquete incompleto puede generarse como borrador para revisión, después de 
 - No enviar claves al navegador ni registrar respuestas crudas del LLM.
 - Mostrar tool calls, resultados, actividad de procesamiento y confirmaciones.
 - Ejecutar los cuatro casos y las cinco herramientas por caso sin LLM; los bloqueos esperados son resultados correctos, no pruebas omitidas.
+
+## Contrato de consultas conversacionales
+
+La intención `consulta` activa lectura y mapeo del caso actual; no genera archivos ni consume permisos. `src/agent/answers.ts` define con Zod el contrato estricto `{status: 'answered' | 'not_available' | 'out_of_scope', evidence_ids: number[]}`. Cada identificador corresponde a una etiqueta, valor y fuente derivados de resultados exitosos de las herramientas de esa sesión y caso. `answered` exige entre 1 y 20 referencias únicas existentes; los otros estados exigen una lista vacía. El servidor rechaza propiedades adicionales, texto libre e identificadores inválidos y construye la respuesta desde la evidencia. Una respuesta válida garantiza procedencia de los valores, no la pertinencia perfecta de la selección del modelo.
+
+Las consultas no modifican el maestro. Un turno de consulta cancela una pregunta de confirmación pendiente. El historial enviado al modelo se limita a cuatro preguntas del mismo caso; no proporciona valores nuevos ni autoridad. Los fallos del proveedor LLM permiten continuar con los comandos y herramientas. El indicador del frontend acredita configuración de clave, no una conexión autenticada exitosa.

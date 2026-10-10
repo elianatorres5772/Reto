@@ -9,6 +9,7 @@ export default defineConfig({
   projects:[{name:'chromium',use:{...devices['Desktop Chrome'],launchOptions:{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}}}],
   webServer:[
     {command:'tsx tests/e2e/server.ts original',url:'http://127.0.0.1:3101/api/health',reuseExistingServer:false,timeout:30000},
+    {command:'tsx tests/e2e/server.ts llm',url:'http://127.0.0.1:3103/api/health',reuseExistingServer:false,timeout:30000},
     {command:'tsx tests/e2e/server.ts prepared',url:'http://127.0.0.1:3102/api/health',reuseExistingServer:false,timeout:30000}
   ]
 });

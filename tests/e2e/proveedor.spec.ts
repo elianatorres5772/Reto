@@ -133,3 +133,12 @@ test('Otro navegador no puede descargar artefactos de la sesión original',async
     const noSession=await second.evaluate(async id=>(await fetch(`/api/artifacts/${id}`)).status,f.data.artefacto.id);expect(noSession).toBe(401);
   } finally {await other.close();}
 });
+
+test('Pregunta sin LLM explica cómo configurar la clave y permite continuar',async({page})=>{
+  await openChat(page);await selectCase(page,co);
+  await command(page,'¿Qué documentos necesita esta solicitud?');
+  await expect(page.locator('#history')).toContainText('LLM_API_KEY');
+  await expect(page.locator('#history')).toContainText('archivo .env');
+  await command(page,'leer');
+  const read=await toolResult(page,'proveedor_leer_solicitud');expect(read.ok).toBe(true);
+});

@@ -3,14 +3,14 @@ import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 import { contracts, type ToolName } from '../../src/contracts/proveedor.js';
 
-// Cada test obtiene un contexto de navegador y una sesión nuevos. Ningún test llama al LLM.
+// Cada test obtiene un contexto de navegador y una sesión nuevos. El proveedor LLM se simula en backend, sin tráfico externo.
 export const test=base.extend<{guardBrowser:void}>({
   guardBrowser:[async({page},use)=>{
     const errors:string[]=[],external:string[]=[];
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',async route=>{
       const u=new URL(route.request().url());
-      if(u.protocol==='http:'&&u.hostname==='127.0.0.1'&&['3101','3102'].includes(u.port))await route.continue();
+      if(u.protocol==='http:'&&u.hostname==='127.0.0.1'&&['3101','3102','3103'].includes(u.port))await route.continue();
       else{external.push(u.origin);await route.abort();}
     });
     await use();expect(errors,'Errores JavaScript del navegador').toEqual([]);expect(external,'No debe haber llamadas externas').toEqual([]);

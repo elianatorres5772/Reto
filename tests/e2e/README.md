@@ -20,14 +20,16 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 
 ## Aislamiento y datos de prueba
 
-Playwright inicia dos servidores exclusivos en puertos 3101 y 3102; falla si ya están ocupados, sin reutilizar procesos ajenos. `server.ts` copia los fixtures a directorios temporales y arranca el mismo entrypoint de producción desde ellos. Los documentos generados también quedan en esos directorios y se limpian al detener el servidor. No cambia archivos de la aplicación ni fixtures originales.
+Playwright inicia tres servidores exclusivos en puertos 3101, 3102 y 3103; falla si ya están ocupados, sin reutilizar procesos ajenos. `server.ts` copia los fixtures a directorios temporales y arranca el mismo entrypoint de producción desde ellos. Los documentos generados también quedan en esos directorios y se limpian al detener el servidor. No cambia archivos de la aplicación ni fixtures originales.
 
 - **Original (3101):** conserva los cuatro casos y sus fechas; prueba el bloqueo por vencimiento con el reloj real.
 - **Preparado (3102):** extiende únicamente las vigencias del índice a 2099-12-31 para probar éxito en CO. También añade un caso sintético con plantilla corrupta. Estas vigencias son datos de prueba; no se presentan como validaciones de soportes reales.
 
+- **LLM simulado (3103):** usa el backend y herramientas reales con un proveedor OpenAI simulado mediante un módulo cargado únicamente por el harness de pruebas. No usa una clave real ni hace peticiones externas. Verifica respuestas basadas en evidencia y recuperación ante referencias inválidas.
+
 El flujo usa la UI para generar el borrador, responder a cada pregunta y descargar documentos. Se verifican hashes, cuenta con cero inicial dentro del XLSX, lectura del PDF y contenido del ZIP. La simulación se comprueba como local y sin envío real. No se desactiva el gate de autorización.
 
-## Cobertura: 15 escenarios
+## Cobertura: 18 escenarios
 
 1. CO: preparación, confirmaciones separadas, descargas XLSX/ZIP y simulación.
 2. Rechazo explícito de confirmación.
@@ -45,6 +47,10 @@ El flujo usa la UI para generar el borrador, responder a cada pregunta y descarg
 14. Contenido HTML del usuario se representa como texto, sin ejecutar código.
 15. Aislamiento de descargas entre navegadores y rechazo sin sesión.
 
-Las únicas intervenciones sobre la red son una pausa controlada antes de continuar una petición real para observar el indicador, y un aborto único para probar recuperación. No reemplazan el backend ni sus contratos. En los demás escenarios el tráfico completo llega al servidor real.
+16. Pregunta sin clave: orientación de configuración y continuidad del chat.
+17. Consulta con LLM simulado: cuenta respaldada por herramientas y cancelación de confirmación.
+18. Respuesta LLM inválida: error controlado, sin clave expuesta y siguiente turno funcional.
 
-Los puertos 3101/3102 deben estar libres. El caso de vencimiento original presupone una fecha actual posterior a 2026-09-30; es consistente con el reto y el entorno actual. La suite cubre Chromium de escritorio; no afirma cobertura de Firefox, WebKit, dispositivos móviles o una revisión visual manual.
+Además del proveedor LLM simulado del servidor 3103, las intervenciones sobre la red son una pausa controlada antes de continuar una petición real para observar el indicador, y un aborto único para probar recuperación. No reemplazan el backend ni sus contratos. En los demás escenarios el tráfico completo llega al servidor real.
+
+Los puertos 3101/3102/3103 deben estar libres. El caso de vencimiento original presupone una fecha actual posterior a 2026-09-30; es consistente con el reto y el entorno actual. La suite cubre Chromium de escritorio; no afirma cobertura de Firefox, WebKit, dispositivos móviles o una revisión visual manual.

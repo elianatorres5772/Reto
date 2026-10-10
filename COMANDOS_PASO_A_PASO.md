@@ -158,7 +158,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 
 Este comando es específico de Linux y de este entorno; no lo copies en una terminal de Windows.
 
-**Qué debes ver:** `15 passed`. Significa que los 15 escenarios E2E fueron aprobados. Es normal no ver una ventana de navegador: las pruebas lo utilizan en segundo plano.
+**Qué debes ver:** `18 passed`. Significa que los 18 escenarios E2E fueron aprobados. Es normal no ver una ventana de navegador: las pruebas lo utilizan en segundo plano.
 
 Las pruebas trabajan con copias temporales de los datos. No cambian las solicitudes originales y no realizan envíos reales.
 
@@ -190,7 +190,7 @@ pnpm run check:all
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all
 ```
 
-Comprueba el código TypeScript, las 17 pruebas internas, la demostración y los 15 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
+Comprueba el código TypeScript, las 20 pruebas internas, la demostración y los 18 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
 
 ## 8. Detener y volver a iniciar el aplicativo
 
@@ -241,3 +241,5 @@ Si quieres que el chat reconozca solicitudes escritas con otras palabras, pide a
 | Ver el informe E2E en tu computador | `pnpm run test:e2e:report` |
 
 Para el primer uso, sigue los pasos en orden. En usos posteriores, normalmente basta con abrir la carpeta, ejecutar `pnpm run dev` y abrir el chat.
+
+Para activar preguntas con inteligencia artificial y saber dónde pegar la clave, sigue [README_LLM.md](README_LLM.md). La clave va en `.env`, no en este documento ni en el chat.

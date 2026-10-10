@@ -1,6 +1,7 @@
 import { createProveedorTools } from '../tools/proveedor.js';
 import { ConfirmationGate } from './confirmation.js';
-import { chooseIntent } from './llm.js';
+import { chooseIntent, answerQuestion } from './llm.js';
+import { collectEvidence } from './answers.js';
 import { caseId, type ToolName } from '../contracts/proveedor.js';
 export type ChatEvent = { type:'thinking'|'tool_call'|'tool_result'|'message'|'confirmation'|'done'; [key:string]:unknown };
 export function createSession(options:Parameters<typeof createProveedorTools>[0]={}) {
@@ -8,6 +9,8 @@ export function createSession(options:Parameters<typeof createProveedorTools>[0]
   const tools=createProveedorTools({...options,authorize:(...args)=>gate.consume(...args)});
   let current:string|null=null,formId:string|null=null,packageId:string|null=null;
   const history:ChatEvent[]=[];
+  let evidenceResults: {name:string;data:unknown}[]=[];
+  let recentQuestions:string[]=[];
   let busy=false;
   async function chat(id:string,text:string,emit:(event:ChatEvent)=>void) {
     if(busy) {gate.clear();emit({type:'message',text:'Hay una operación en curso. Espera a que termine.'});emit({type:'done'});return;}
@@ -17,6 +20,10 @@ export function createSession(options:Parameters<typeof createProveedorTools>[0]
       send({type:'tool_call',name,input});
       const result=await tools.execute(name,input);
       send({type:'tool_result',name,result});
+      if(result.ok) {
+        evidenceResults=evidenceResults.filter(item=>item.name!==name);
+        evidenceResults.push({name,data:result.data});
+      } else evidenceResults=evidenceResults.filter(item=>item.name!==name);
       if(!result.ok) send({type:'message',text:result.error.message});
       return result;
     };
@@ -28,7 +35,7 @@ export function createSession(options:Parameters<typeof createProveedorTools>[0]
     };
     try {
       if(!caseId.safeParse(id).success) {send({type:'message',text:'Selecciona un caso válido.'});return;}
-      if(id!==current){gate.clear();formId=null;packageId=null;current=id;}
+      if(id!==current){gate.clear();formId=null;packageId=null;current=id;evidenceResults=[];recentQuestions=[];}
       const pending=gate.status();
       const confirmed=gate.userTurn(text);
       send({type:'thinking',active:true});
@@ -36,6 +43,7 @@ export function createSession(options:Parameters<typeof createProveedorTools>[0]
         send({type:'confirmation',state:'confirmed',action:confirmed.action});
         if(confirmed.action==='proveedor_armar_paquete') {
           packageId=null;
+          evidenceResults=evidenceResults.filter(item=>!['proveedor_armar_paquete','proveedor_simular_envio'].includes(item.name));
           const r=await call(confirmed.action,{caso_id:id,formulario_id:confirmed.artifactId});
           if(r.ok){packageId=r.data.paquete.id;send({type:'message',text:'Paquete borrador generado. Consulta el manifiesto y los pendientes en el resultado de la herramienta.'});}
         } else {
@@ -47,13 +55,22 @@ export function createSession(options:Parameters<typeof createProveedorTools>[0]
       if(pending)send({type:'confirmation',state:'cancelled',action:pending.action});
       const {intent,fallback}=await chooseIntent(text);
       if(fallback)send({type:'message',text:'El clasificador LLM no está disponible. Puedes continuar con los comandos del chat.'});
-      if(intent==='leer' || intent==='resumen') {
+      if(intent==='consulta') {
+        const read=await call('proveedor_leer_solicitud',{caso_id:id});
+        if(!read.ok)return;
+        const mapped=await call('proveedor_mapear_campos',{caso_id:id});
+        if(!mapped.ok)return;
+        const answer=await answerQuestion(text,collectEvidence(evidenceResults),recentQuestions);
+        send({type:'message',text:answer.ok?answer.text:answer.error});
+        recentQuestions=[...recentQuestions,text].slice(-4);
+      } else if(intent==='leer' || intent==='resumen') {
         const r=await call('proveedor_leer_solicitud',{caso_id:id});
         if(r.ok)send({type:'message',text:JSON.stringify(r.data,null,2)});
       } else if(intent==='mapear') {
         await call('proveedor_mapear_campos',{caso_id:id});
       } else if(intent==='formulario' || intent==='preparar') {
         formId=null;packageId=null;
+        evidenceResults=evidenceResults.filter(item=>!['proveedor_generar_formulario','proveedor_armar_paquete','proveedor_simular_envio'].includes(item.name));
         const read=await call('proveedor_leer_solicitud',{caso_id:id});
         if(!read.ok)return;
         const mapped=await call('proveedor_mapear_campos',{caso_id:id});

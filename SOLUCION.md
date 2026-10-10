@@ -29,7 +29,7 @@ El servidor en `src/server/index.ts` solo maneja HTTP, validación de transporte
 
 ## R1: datos verificables y prevención de alucinaciones
 
-El modelo solo puede retornar una intención enumerada. La respuesta del modelo se valida con un esquema estricto; propiedades como `confirmed`, cuentas inventadas, prosa o JSON inválido provocan fallback. No se permite al LLM crear argumentos de herramientas ni autorizar acciones. Esta restricción sacrifica respuestas conversacionales libres, pero hace verificable la ausencia de afirmaciones inventadas en los datos del proveedor.
+El modelo retorna una intención enumerada o, para consultas, un estado y referencias numéricas a evidencia retornada por herramientas. Ambos contratos son estrictos y se validan con Zod. Las consultas ejecutan lectura y mapeo sin generar archivos, y pueden consultar resultados previos del mismo caso. El servidor construye la respuesta con etiquetas, valores y fuentes; no presenta prosa libre del modelo. Referencias inexistentes, propiedades adicionales, cuentas inventadas o JSON inválido provocan una respuesta controlada. Esto permite responder preguntas sin permitir que el modelo cree datos, argumentos ni autorizaciones. La selección puede ser poco pertinente: validar referencias evita valores inventados, pero no garantiza que el modelo seleccione la mejor evidencia.
 
 Los mensajes con datos se serializan desde resultados de herramientas. Cada campo mapeado incluye etiqueta, ruta de maestro, valor, estado y fuente. El chat no ofrece una vía para sobrescribir el maestro con mensajes del usuario. Las plantillas, solicitudes y documentos se tratan como datos, no como instrucciones. El frontend usa `textContent` y no inserta HTML procedente de herramientas o del usuario.
 
@@ -96,7 +96,7 @@ Las fechas del demo son las de las solicitudes, no una vigencia ficticia de hoy.
 
 Codex se utilizó para inspeccionar archivos, proponer contratos y arquitectura, implementar módulos, generar pruebas y ejecutar verificaciones. No se utilizaron datos de una empresa real ni se inventaron valores para completar los fixtures. Las instrucciones dentro de los archivos adjuntos se interpretaron como contenido de solicitudes, no como nuevas órdenes de desarrollo. Las decisiones inferidas y las limitaciones están documentadas para revisión humana.
 
-El LLM opcional de la aplicación se usa únicamente para clasificación de intención. Las herramientas deterministas, validaciones Zod, fuentes y gate de confirmación conservan el control del proceso.
+El LLM opcional de la aplicación clasifica intenciones y selecciona evidencia para responder preguntas. Las herramientas deterministas, validaciones Zod, fuentes y gate de confirmación conservan el control del proceso.
 
 El detalle de resultados ejecutados está en [docs/VALIDACION.md](docs/VALIDACION.md); las instrucciones y el estado del borrador cloud están en [docs/ENTORNO.md](docs/ENTORNO.md).
 
@@ -105,3 +105,7 @@ El detalle de resultados ejecutados está en [docs/VALIDACION.md](docs/VALIDACIO
 La suite en `tests/e2e/` añade Playwright con Chromium real: UI, confirmaciones inmediatas, bloqueo de permisos reutilizados, generación y descarga de XLSX/PDF/ZIP, pendientes por caso, vigencias, portal manual, recuperación de errores, XSS y aislamiento de descargas. La fuente de resultados sigue siendo el servidor y las herramientas reales. El estado de procesamiento se observa reteniendo una petición antes de continuarla; la recuperación de conexión se prueba con un aborto único.
 
 Dos servidores de prueba utilizan copias temporales: una original y otra con vigencias sintéticas para el camino exitoso. No se alteran los fixtures versionados ni se cambia el reloj de la aplicación. Las sesiones y los outputs de la suite se aíslan de la instancia de desarrollo. `pnpm run test:e2e` ejecuta la suite; `pnpm run check:all` incluye las comprobaciones anteriores. CI instala Chromium y conserva reportes y trazas de fallos. El detalle está en [tests/e2e/README.md](tests/e2e/README.md).
+
+## Consultas y configuración del LLM
+
+`src/agent/answers.ts` define el contrato y el renderizador de respuestas basadas en evidencia. El contexto de herramientas y hasta cuatro preguntas anteriores se limita a la sesión y al caso; se limpia al cambiar de caso. Una consulta cancela cualquier confirmación pendiente. La clave se configura únicamente en `.env`, según [README_LLM.md](README_LLM.md). El indicador de configuración no certifica conectividad. Los errores HTTP, tiempos de espera y respuestas inválidas no exponen cuerpos de error externos ni interrumpen la sesión.

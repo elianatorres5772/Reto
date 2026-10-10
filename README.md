@@ -15,7 +15,7 @@ pnpm run dev
 
 Abre el servidor local en el puerto 3000. Usa **Preparar borrador**, revisa las herramientas y responde **sí** a la pregunta para empaquetar. La simulación necesita su propia confirmación. Usa **mapear** para inspeccionar campos sin generar archivos.
 
-No hace falta una clave del LLM. El modo predeterminado reconoce comandos: `leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen`, `ayuda`. Para clasificar solicitudes en lenguaje natural, crea `.env` a partir de `.env.example` y configura `LLM_API_KEY` y opcionalmente `LLM_MODEL`. No publiques `.env` ni pegues claves en el chat. El proveedor opcional es OpenAI y solo clasifica intenciones; sus respuestas nunca se presentan como datos del proveedor.
+No hace falta una clave del LLM. El modo predeterminado reconoce comandos: `leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen`, `ayuda`. Para ejecutar acciones en lenguaje natural y responder preguntas sobre la solicitud, configura OpenAI siguiendo [README_LLM.md: dónde poner la clave y cómo probarla](README_LLM.md). El LLM selecciona evidencia obtenida de herramientas; el servidor construye la respuesta con los valores y fuentes validados. No publiques `.env` ni pegues claves en el chat.
 
 ## Verificar
 
@@ -44,6 +44,6 @@ pnpm run test:e2e
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 ```
 
-Son 15 escenarios con navegador y backend reales, sin clave LLM. Consulta [tests/e2e/README.md](tests/e2e/README.md) para cobertura, aislamiento de fixtures, reportes y ejecución en CI. `pnpm run check:all` incluye todas las verificaciones y las E2E.
+Son 18 escenarios con navegador y backend reales, sin clave LLM. Consulta [tests/e2e/README.md](tests/e2e/README.md) para cobertura, aislamiento de fixtures, reportes y ejecución en CI. `pnpm run check:all` incluye todas las verificaciones y las E2E.
 
 El diseño visual y sus recursos se describen en [docs/DISENO.md](docs/DISENO.md).

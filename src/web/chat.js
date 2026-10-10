@@ -60,7 +60,7 @@ async function init() {
     if(!s.ok||!c.ok) {$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');message('No se pudo iniciar el chat o cargar los fixtures.');return;}
     session=s.session_id;$('case').replaceChildren();
     for(const item of c.data){const o=document.createElement('option');o.value=item.id;o.textContent=`${item.cliente} · ${item.formato.toUpperCase()}`;$('case').append(o);}
-    $('mode').textContent=h.mode==='deterministic'?'Modo sin LLM':'LLM para clasificación de intención';
+    $('mode').textContent=h.mode==='deterministic'?'Modo sin LLM':'LLM configurado · conexión se verifica al preguntar';
     message('Selecciona una solicitud y pulsa «Preparar borrador». Puedes consultar cada herramienta y descargar los documentos generados.');
   } catch {$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');message('No se pudo conectar al servidor.');}
   finally {setBusy(false);if(!session){$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');}}
