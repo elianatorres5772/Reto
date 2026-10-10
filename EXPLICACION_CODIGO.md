@@ -315,3 +315,24 @@ El código y los archivos de despliegue no equivalen a una URL publicada. Se nec
 10. Las descargas utilizan la sesión; otra sesión no puede reutilizar el UUID.
 
 Para explicar una decisión durante la defensa, combina esta guía, la sección correspondiente de SOLUCION y su prueba. Para explicar una línea concreta, abre su archivo actual y consulta el commit con Git. Esta guía cubre responsabilidades y flujo completo, pero la persona que presenta el reto debe revisar y comprender el código antes de defenderlo.
+## 19. Ampliación: automatización BDD y MCP
+
+Se añadió una capa de pruebas TypeScript independiente del código de producción:
+
+- `tests/bdd/features/registro.feature`: requisitos ejecutables en Gherkin español; 11 escenarios de confirmación, soportes, archivos, errores, portal y respuestas del LLM.
+- `tests/bdd/screenplay/ui.ts`: selectores del chat.
+- `tests/bdd/screenplay/tasks.ts`: acciones de negocio del actor, combinando interacciones de Serenity/JS con la espera del chat por streaming.
+- `tests/bdd/screenplay/questions.ts`: preguntas sobre resultados visibles; valida los contratos Zod y cuenta llamadas ejecutadas.
+- `tests/bdd/steps/registro.steps.ts`: enlaza los pasos Gherkin con tareas y comprobaciones; descarga ZIP, verifica SHA-256 y comprueba su contenido.
+- `tests/bdd/support/hooks.ts`: prepara el navegador, actores y reporters; bloquea solicitudes externas y detecta errores JavaScript.
+- `tests/bdd/support/servers.ts`: inicia y detiene servidores propios en puertos 3151–3153, reutilizando el harness de fixtures temporales.
+- `cucumber.mjs`: configuración de Cucumber y adapter Serenity/JS.
+- `scripts/run-bdd.ts`: ejecución, limpieza de reportes y protección contra ejecuciones con cero escenarios o sin evidencia Serenity.
+- `scripts/install-qa-browsers.ts`: instala cada revisión del navegador compatible con Serenity/JS y MCP, sin alterar el driver de las pruebas originales.
+- `scripts/playwright-mcp.ts`: launcher stdio con entorno mínimo y configuración local de navegador; no propaga la clave LLM.
+- `scripts/mcp-smoke.ts`: cliente MCP real que verifica el flujo en navegador mediante las herramientas del servidor Playwright MCP y guarda evidencia.
+- `.mcp.json`: ejemplo de conexión para clientes compatibles. No instala automáticamente un servidor en el editor.
+
+Los 19 E2E anteriores se conservan. El backend de pruebas es real; el LLM está simulado. Los reportes se generan en `reports/` y se excluyen de Git. Java 21 permite generar el HTML agregado Serenity, pero no es necesario para ejecutar los escenarios ni abrir el HTML Cucumber. El job adicional de CI conserva la evidencia como artefacto.
+
+La guía [tests/bdd/README.md](tests/bdd/README.md) detalla instalación, arquitectura Screenplay, ejecución, reportes, MCP y limitaciones de validación.

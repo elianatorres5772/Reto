@@ -2,7 +2,7 @@
 
 Usa el checkout existente `/workspace/reto1`; cada tarea está aislada. No se necesitan worktrees.
 
-El borrador cloud actualizado guarda `install_script` con `pnpm install --frozen-lockfile`, `pnpm run typecheck`, `pnpm run module:check` y `pnpm run build`. Todos se ejecutaron en esta máquina. Node debe ser 22.13+; pnpm está fijado en 11.19.0. La caché/estado y store quedan dentro de node_modules, con integridad del lockfile.
+El borrador cloud actualizado guarda `install_script` con `pnpm install --frozen-lockfile`, `pnpm run typecheck`, `pnpm run module:check` y `pnpm run build`. Todos se ejecutaron en esta máquina. Node debe ser 22.22.2+ de la rama 22 o 24.15+ de la rama 24; pnpm está fijado en 11.19.0. La caché/estado y store quedan dentro de node_modules, con integridad del lockfile.
 
 `start_skill` registra arranque con `pnpm run dev`, verificaciones de health/catálogo y el flujo de pruebas, build, módulo y Bun. Advierte que el demo limpia `out/` y debe ejecutarse antes de arrancar un servidor cuyos documentos se quieran conservar. La fecha predeterminada es UTC actual; el histórico es explícito. Las E2E utilizan Chromium instalado y servidores propios aislados.
 

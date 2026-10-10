@@ -1,5 +1,17 @@
 # Validación de la actualización al PRD completo
 
+## Ampliación BDD, Screenplay y MCP — 10 de octubre de 2026
+
+- **11 escenarios Cucumber y 61 pasos aprobados**, con Serenity/JS, TypeScript y Playwright. Se verificó la generación de JSON Serenity con tareas del actor, HTML Cucumber y HTML agregado Serenity BDD usando Java 21.
+- **Comprobación MCP aprobada** con cliente SDK y servidor Playwright MCP reales: navegación, preparación, permisos separados para paquete/simulación y ausencia de envío real. Evidencia local en `reports/mcp/evidence.json`.
+- Se usó Chromium instalado en `/usr/bin/chromium`; el MCP requirió la opción de sandbox para contenedor aislado. No se sustituyó el navegador ni el protocolo por mocks. El LLM sí está simulado, sin clave ni tráfico a OpenAI.
+- La descarga de revisiones de navegador con `pnpm run test:browsers` fue bloqueada por la red de este entorno (`403 Domain forbidden` en `cdn.playwright.dev`). No se desactivó TLS ni se declaró esa instalación completada. El comando se comprobó con `--dry-run` y las suites se ejecutaron con el navegador disponible. La ruta de descarga debe verificarse en una red que permita ese dominio.
+- Se añadió un job GitHub Actions para BDD/MCP y artefactos; su ejecución remota no se acredita por la ejecución local.
+
+Guía completa: [tests/bdd/README.md](../tests/bdd/README.md). Estas comprobaciones no sustituyen la consulta real autenticada al LLM ni la publicación en hosting.
+
+## Validación base de la entrega anterior
+
 Resultados ejecutados sobre el código de esta entrega; los bloqueos esperados no son pruebas fallidas.
 
 | Verificación | Resultado |
