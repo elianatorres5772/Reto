@@ -1,0 +1,111 @@
+{
+  "criterio": "Agrupación inferida de país, formato, etiquetas y soportes; nombres repetidos conservados por caso. No se suministraron PRD ni binarios XLSX/PDF.",
+  "casos": {
+    "pa-logistica-istmo": [
+      "file_00000000bfa881f58374492992e02468",
+      "file_00000000329c81f5b1bbdd722ce78e04",
+      "file_00000000b68481f5a3cf6c0af2bb66f4"
+    ],
+    "hn-agroexport-sula": [
+      "file_00000000701481f598bc77e7d8b3a1ee",
+      "file_000000005fb481f5af48a16aa6d36271",
+      "file_00000000b01c81f590f95c6c08eaece6"
+    ],
+    "ec-corp-andina": [
+      "file_00000000095881f5afd34ce99ff679d3",
+      "file_0000000051a881f994be2f6087733762",
+      "file_00000000b40881f5afe5f47494f884ce"
+    ],
+    "co-industrias-delta": [
+      "file_00000000602081f58a570fa9e480b642",
+      "file_0000000055e4820c9b8d2094b4aeafa6",
+      "file_00000000fafc81f5a2d153a8bfd71844"
+    ]
+  },
+  "archivos": [
+    {
+      "nombre": "glosario-campos.json",
+      "id_origen": "file_0000000088fc81f5beca85ee92888bb5"
+    },
+    {
+      "nombre": "soportes-exigidos.json",
+      "id_origen": "file_00000000b68481f5a3cf6c0af2bb66f4"
+    },
+    {
+      "nombre": "plantilla-campos.json",
+      "id_origen": "file_00000000329c81f5b1bbdd722ce78e04"
+    },
+    {
+      "nombre": "solicitud.json",
+      "id_origen": "file_00000000bfa881f58374492992e02468"
+    },
+    {
+      "nombre": "plantilla-celdas.json",
+      "id_origen": "file_000000005fb481f5af48a16aa6d36271"
+    },
+    {
+      "nombre": "soportes-exigidos.json",
+      "id_origen": "file_00000000b01c81f590f95c6c08eaece6"
+    },
+    {
+      "nombre": "solicitud.json",
+      "id_origen": "file_00000000701481f598bc77e7d8b3a1ee"
+    },
+    {
+      "nombre": "solicitud.json",
+      "id_origen": "file_00000000095881f5afd34ce99ff679d3"
+    },
+    {
+      "nombre": "soportes-exigidos.json",
+      "id_origen": "file_00000000b40881f5afe5f47494f884ce"
+    },
+    {
+      "nombre": "plantilla-campos.json",
+      "id_origen": "file_0000000051a881f994be2f6087733762"
+    },
+    {
+      "nombre": "soportes-exigidos.json",
+      "id_origen": "file_00000000fafc81f5a2d153a8bfd71844"
+    },
+    {
+      "nombre": "plantilla-celdas.json",
+      "id_origen": "file_0000000055e4820c9b8d2094b4aeafa6"
+    },
+    {
+      "nombre": "solicitud.json",
+      "id_origen": "file_00000000602081f58a570fa9e480b642"
+    },
+    {
+      "nombre": "maestro.json",
+      "id_origen": "file_000000002414822fbc03306abd86ccd4"
+    },
+    {
+      "nombre": "index.json",
+      "id_origen": "file_000000009cec81f58b9095e5ba3dd242"
+    },
+    {
+      "nombre": "estados-financieros-2025.txt",
+      "id_origen": "file_000000001d1081f680089b7ddeea2c48"
+    },
+    {
+      "nombre": "iso-9001-2025.txt",
+      "id_origen": "file_00000000c4fc81f5ba6ca012369ca5f7"
+    },
+    {
+      "nombre": "parafiscales-2026-07.txt",
+      "id_origen": "file_0000000077c881f5a4a8e86efc8a1bda"
+    },
+    {
+      "nombre": "rut-2026.txt",
+      "id_origen": "file_00000000edfc820ca4a349222de9e1cd"
+    },
+    {
+      "nombre": "camara-comercio-2026-08.txt",
+      "id_origen": "file_000000007ce0822fa98b3eed2ee91766"
+    },
+    {
+      "nombre": "certificacion-bancaria-2026-08.txt",
+      "id_origen": "file_00000000138881f588dea716aa8a9b3b"
+    }
+  ]
+}

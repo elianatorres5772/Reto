@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Registro como proveedor</title><link rel="stylesheet" href="/styles.css"><script src="/chat.js" defer></script></head>
+<body><main><header><span class="badge">DEMO · DATOS FICTICIOS</span><h1>Registro como proveedor</h1><p>Prepara borradores con datos trazables. Revisa los pendientes antes de confirmar cada acción.</p></header>
+<section class="toolbar"><label for="case">Solicitud</label><select id="case" disabled><option>Cargando casos…</option></select><span id="mode"></span></section>
+<aside>No se envían correos ni se accede a portales. Los formularios se reconstruyen desde mapas JSON y requieren revisión y firma humana. Las vigencias se evalúan a la fecha actual.</aside>
+<nav aria-label="Comandos"><button data-command="leer">Leer solicitud</button><button data-command="mapear">Ver campos</button><button data-command="preparar">Preparar borrador</button><button data-command="paquete">Empaquetar</button><button data-command="simular">Simular envío</button></nav>
+<section id="history" aria-label="Historial de conversación" aria-live="polite"></section>
+<div id="thinking" role="status" hidden>Procesando herramientas…</div>
+<section id="confirmation" hidden><p id="question"></p><button id="yes">Sí, confirmo</button><button id="no">No, cancelar</button><span id="confirmation-state"></span></section>
+<form id="chat"><label for="message">Mensaje</label><div class="composer"><input id="message" autocomplete="off" maxlength="2000" placeholder="Escribe preparar, mapear o una solicitud…" required><button type="submit">Enviar</button></div></form>
+<footer>La actividad muestra llamadas y resultados verificables. No expone razonamiento interno ni credenciales.</footer></main></body></html>

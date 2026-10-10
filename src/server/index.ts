@@ -1,0 +1,69 @@
+import 'dotenv/config';
+import { createServer, type ServerResponse, type IncomingMessage } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { createSession } from '../agent/orchestrator.js';
+import { createProveedorTools } from '../tools/proveedor.js';
+import { caseId, artifactId } from '../contracts/proveedor.js';
+const sessions=new Map<string,{session:ReturnType<typeof createSession>;accessed:number}>();
+const catalog=createProveedorTools();
+const MAX_SESSIONS=100;
+const TTL=60*60*1000;
+function scrub(value:string) {const key=process.env.LLM_API_KEY;return key?value.split(key).join('[REDACTED]'):value;}
+function json(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(scrub(JSON.stringify(data)));}
+async function body(req:IncomingMessage) {
+  let size=0;const chunks:Buffer[]=[];
+  for await(const chunk of req){size+=chunk.length;if(size>8192)return null;chunks.push(chunk);}
+  try{return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;}catch{return null;}
+}
+function authorized(req:IncomingMessage) {
+  const id=req.headers['x-session-id'];
+  if(typeof id!=='string')return null;
+  const entry=sessions.get(id);
+  if(!entry || Date.now()-entry.accessed>TTL){sessions.delete(id);return null;}
+  entry.accessed=Date.now();return entry.session;
+}
+export const server=createServer(async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Referrer-Policy','no-referrer');
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  try {
+    // Sin CORS. Impide uso desde sitios externos y peticiones de navegador de otro origen.
+    const origin=req.headers.origin;
+    if((origin && origin!==`http://${req.headers.host}`) || req.headers['sec-fetch-site']==='cross-site') {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
+    const url=new URL(req.url??'/','http://localhost');
+    if(req.method==='GET' && ['/','/chat.js','/styles.css'].includes(url.pathname)) {
+      const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
+      res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':'text/css; charset=utf-8');
+      res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
+    }
+    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic'});return;}
+    if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
+    if(req.method==='POST' && url.pathname==='/api/session') {
+      for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);
+      if(sessions.size>=MAX_SESSIONS){json(res,503,{ok:false,error:'Capacidad temporal agotada.'});return;}
+      const id=randomUUID();sessions.set(id,{session:createSession(),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+    }
+    if(req.method==='POST' && url.pathname==='/api/chat') {
+      const session=authorized(req);if(!session){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      const input=z.object({caso_id:caseId,message:z.string().trim().min(1).max(2000)}).strict().safeParse(await body(req));
+      if(!input.success){json(res,400,{ok:false,error:'Mensaje inválido.'});return;}
+      res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8'});
+      await session.chat(input.data.caso_id,input.data.message,event=>{if(!res.destroyed)res.write(scrub(JSON.stringify(event))+'\n');});
+      res.end();return;
+    }
+    if(req.method==='GET' && url.pathname.startsWith('/api/artifacts/')) {
+      const session=authorized(req);if(!session){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      const id=artifactId.safeParse(url.pathname.slice('/api/artifacts/'.length));
+      const file=id.success?await session.tools.download(id.data):null;
+      if(!file){json(res,404,{ok:false,error:'Artefacto no disponible.'});return;}
+      res.writeHead(200,{'Content-Type':file.meta.mime,'Content-Disposition':`attachment; filename="${file.meta.nombre}"`});res.end(file.bytes);return;
+    }
+    json(res,404,{ok:false,error:'Ruta no disponible.'});
+  } catch {if(!res.headersSent)json(res,500,{ok:false,error:'Operación no disponible.'});else res.end();}
+});
+const port=z.coerce.number().int().min(1).max(65535).safeParse(process.env.PORT??3000);
+if(!port.success){console.error('PORT debe ser un puerto válido.');process.exitCode=1;}
+else {server.requestTimeout=30000;server.headersTimeout=10000;server.listen(port.data,process.env.HOST??'127.0.0.1',()=>console.log(`Servidor iniciado en puerto ${port.data}.`));}
