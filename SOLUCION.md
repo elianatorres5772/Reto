@@ -99,3 +99,9 @@ Codex se utilizó para inspeccionar archivos, proponer contratos y arquitectura,
 El LLM opcional de la aplicación se usa únicamente para clasificación de intención. Las herramientas deterministas, validaciones Zod, fuentes y gate de confirmación conservan el control del proceso.
 
 El detalle de resultados ejecutados está en [docs/VALIDACION.md](docs/VALIDACION.md); las instrucciones y el estado del borrador cloud están en [docs/ENTORNO.md](docs/ENTORNO.md).
+
+## E2E del aplicativo
+
+La suite en `tests/e2e/` añade Playwright con Chromium real: UI, confirmaciones inmediatas, bloqueo de permisos reutilizados, generación y descarga de XLSX/PDF/ZIP, pendientes por caso, vigencias, portal manual, recuperación de errores, XSS y aislamiento de descargas. La fuente de resultados sigue siendo el servidor y las herramientas reales. El estado de procesamiento se observa reteniendo una petición antes de continuarla; la recuperación de conexión se prueba con un aborto único.
+
+Dos servidores de prueba utilizan copias temporales: una original y otra con vigencias sintéticas para el camino exitoso. No se alteran los fixtures versionados ni se cambia el reloj de la aplicación. Las sesiones y los outputs de la suite se aíslan de la instancia de desarrollo. `npm run test:e2e` ejecuta la suite; `npm run check:all` incluye las comprobaciones anteriores. CI instala Chromium y conserva reportes y trazas de fallos. El detalle está en [tests/e2e/README.md](tests/e2e/README.md).

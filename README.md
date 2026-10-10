@@ -32,3 +32,14 @@ npm exec --cache /tmp/reto1-npm-cache -- bun run demo.ts
 Los XLSX y PDF originales no fueron adjuntados: se reconstruyen borradores desde los mapas JSON. Todos los soportes son placeholders ficticios. No hay firma, correo real, carga de portal ni aprobación legal. Panamá requiere gestión manual. Sesiones y autorizaciones viven en memoria y se pierden al reiniciar; los artefactos quedan en `outputs/` y sus descargas requieren la sesión original. Recargar la página crea una sesión nueva.
 
 Consulta [SOLUCION.md](SOLUCION.md) para arquitectura y decisiones, y [docs/ESPECIFICACION.md](docs/ESPECIFICACION.md) para los contratos y criterios de aceptación.
+
+## E2E en navegador real
+
+```sh
+npx playwright install --with-deps chromium
+npm run test:e2e
+# Entorno cloud con Chromium ya instalado:
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+Son 15 escenarios con navegador y backend reales, sin clave LLM. Consulta [tests/e2e/README.md](tests/e2e/README.md) para cobertura, aislamiento de fixtures, reportes y ejecución en CI. `npm run check:all` incluye todas las verificaciones y las E2E.
