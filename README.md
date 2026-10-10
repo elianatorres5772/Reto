@@ -2,6 +2,8 @@
 
 Agente conversacional con herramientas tipadas, datos trazables, formularios borrador y confirmación humana. Incluye los cuatro casos ficticios suministrados: CO, EC, HN y PA.
 
+Si no tienes experiencia técnica, empieza por la [guía de comandos paso a paso](COMANDOS_PASO_A_PASO.md).
+
 ## Ejecutar
 
 Requiere Node 20+ y npm. Desde la raíz del repositorio:
