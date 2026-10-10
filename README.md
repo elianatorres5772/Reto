@@ -74,6 +74,7 @@ Las llamadas públicas se documentan en [docs/ESPECIFICACION.md](docs/ESPECIFICA
 **Link público de prueba: pendiente de activar y verificar.** No hay una URL pública ni clave de acceso confirmadas todavía. [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) explica cómo publicar con Docker/Render y registrar aquí la URL real. No se afirma conexión real al LLM sin probar una clave propia.
 
 - [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md): instrucciones para personas sin experiencia técnica.
+- [PASOS_PENDIENTES_DEL_RETO.md](PASOS_PENDIENTES_DEL_RETO.md): guía para conectar el LLM real, publicar y registrar la validación final.
 - [README_LLM.md](README_LLM.md): dónde poner la clave y cómo comprobar una pregunta.
 - [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md): explicación de todos los módulos y evolución desde el primer push.
 - [docs/PRD_RETO_01.md](docs/PRD_RETO_01.md): especificaciones completas proporcionadas para el reto.

@@ -2,6 +2,8 @@
 
 El repositorio incluye Dockerfile, compose.yaml y render.yaml. **La configuración no crea una URL por sí sola.** Falta activar un servicio en una cuenta de hosting y probarlo con una clave propia.
 
+Para seguir el proceso completo desde Windows, consulta [PASOS_PENDIENTES_DEL_RETO.md](../PASOS_PENDIENTES_DEL_RETO.md). Incluye actualización con Git, clave, publicación, pruebas y registro de evidencia.
+
 ## Opción local con Docker
 
 Instala Docker Desktop, abre el proyecto y crea `.env` según `README_LLM.md`. Después:
