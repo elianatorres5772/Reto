@@ -34,9 +34,9 @@ export const server=createServer(async(req,res)=>{
     const origin=req.headers.origin;
     if((origin && origin!==`http://${req.headers.host}`) || req.headers['sec-fetch-site']==='cross-site') {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
     const url=new URL(req.url??'/','http://localhost');
-    if(req.method==='GET' && ['/','/chat.js','/styles.css'].includes(url.pathname)) {
+    if(req.method==='GET' && ['/','/chat.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
-      res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':'text/css; charset=utf-8');
+      res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
     }
     if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic'});return;}

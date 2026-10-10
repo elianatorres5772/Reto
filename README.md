@@ -45,3 +45,5 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 ```
 
 Son 15 escenarios con navegador y backend reales, sin clave LLM. Consulta [tests/e2e/README.md](tests/e2e/README.md) para cobertura, aislamiento de fixtures, reportes y ejecución en CI. `pnpm run check:all` incluye todas las verificaciones y las E2E.
+
+El diseño visual y sus recursos se describen en [docs/DISENO.md](docs/DISENO.md).

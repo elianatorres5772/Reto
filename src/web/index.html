@@ -1,11 +1,37 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Registro como proveedor</title><link rel="stylesheet" href="/styles.css"><script src="/chat.js" defer></script></head>
-<body><main><header><span class="badge">DEMO · DATOS FICTICIOS</span><h1>Registro como proveedor</h1><p>Prepara borradores con datos trazables. Revisa los pendientes antes de confirmar cada acción.</p></header>
-<section class="toolbar"><label for="case">Solicitud</label><select id="case" disabled><option>Cargando casos…</option></select><span id="mode"></span></section>
-<aside>No se envían correos ni se accede a portales. Los formularios se reconstruyen desde mapas JSON y requieren revisión y firma humana. Las vigencias se evalúan a la fecha actual.</aside>
-<nav aria-label="Comandos"><button data-command="leer">Leer solicitud</button><button data-command="mapear">Ver campos</button><button data-command="preparar">Preparar borrador</button><button data-command="paquete">Empaquetar</button><button data-command="simular">Simular envío</button></nav>
-<section id="history" aria-label="Historial de conversación" aria-live="polite"></section>
-<div id="thinking" role="status" hidden>Procesando herramientas…</div>
-<section id="confirmation" hidden><p id="question"></p><button id="yes">Sí, confirmo</button><button id="no">No, cancelar</button><span id="confirmation-state"></span></section>
-<form id="chat"><label for="message">Mensaje</label><div class="composer"><input id="message" autocomplete="off" maxlength="2000" placeholder="Escribe preparar, mapear o una solicitud…" required><button type="submit">Enviar</button></div></form>
-<footer>La actividad muestra llamadas y resultados verificables. No expone razonamiento interno ni credenciales.</footer></main></body></html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#7524a2"><title>Registro como proveedor</title><link rel="stylesheet" href="/styles.css"><script src="/chat.js" defer></script></head>
+<body>
+<div class="scene" aria-hidden="true"></div>
+<main class="experience">
+  <section class="chat-shell" aria-label="Asistente de registro">
+    <div class="avatar-ring"><img src="/assets/assistant.svg" alt="" width="96" height="96"></div>
+    <div class="chat-panel">
+      <header class="chat-header">
+        <div class="brand">proveedor<span>·</span></div>
+        <p class="brand-caption">Tu asistente de registro</p>
+        <div class="connection"><span class="status-dot" aria-hidden="true"></span><span id="connection-status">Conectando…</span></div>
+        <h1>Registro como proveedor</h1>
+      </header>
+      <section class="toolbar"><label for="case">Solicitud</label><select id="case" disabled><option>Cargando casos…</option></select><span id="mode"></span></section>
+      <aside class="notice"><span class="badge">DEMO · DATOS FICTICIOS</span><p>Borradores pendientes de revisión y firma. Sin correos ni cargas a portales. Las vigencias se evalúan a la fecha actual.</p></aside>
+      <div class="conversation">
+        <section id="history" aria-label="Historial de conversación" aria-live="polite"></section>
+        <div id="thinking" role="status" hidden><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>Procesando herramientas…</div>
+        <section id="confirmation" hidden><span class="confirmation-label">Tu autorización es necesaria</span><p id="question"></p><div class="confirmation-buttons"><button id="yes">Sí, confirmo</button><button id="no">No, cancelar</button></div><span id="confirmation-state"></span></section>
+      </div>
+      <nav aria-label="Comandos"><button data-command="leer">Leer solicitud</button><button data-command="mapear">Ver campos</button><button data-command="preparar">Preparar borrador</button><button data-command="paquete">Empaquetar</button><button data-command="simular">Simular envío</button></nav>
+      <form id="chat"><label for="message">Mensaje</label><div class="composer"><input id="message" autocomplete="off" maxlength="2000" placeholder="Escribe aquí tu mensaje…" required><button type="submit">Enviar <span class="send-icon" aria-hidden="true"></span></button></div></form>
+      <footer>Datos trazables. Acciones con tu confirmación.</footer>
+    </div>
+  </section>
+  <section class="story" aria-label="Bienvenida">
+    <span class="story-eyebrow">MENOS TRÁMITES. MÁS CONVERSACIÓN.</span>
+    <h2>Tu próximo paso,<br>una conversación<span>.</span></h2>
+    <p>Un espacio para preparar tu registro, revisar tus documentos y avanzar con confianza.</p>
+    <div class="story-tags"><span>Campos con fuente</span><span>Revisión a tu ritmo</span></div>
+    <div class="welcome-bubble"><div><span>¡Hola!</span><strong>Vamos paso a paso.</strong><p>Selecciona una solicitud y empecemos.</p></div><img src="/assets/assistant.svg" alt="" width="100" height="100"></div>
+    <span class="story-footnote">ASISTENTE DE PROVEEDORES · DEMOSTRACIÓN</span>
+  </section>
+</main>
+</body></html>

@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 let session=null,busy=false;
 const cards=new Map();
 function message(text,role='assistant') {const el=document.createElement('article');el.className=`message ${role}`;const label=document.createElement('strong');label.textContent=role==='user'?'Tú':'Agente';const pre=document.createElement('pre');pre.textContent=text;el.append(label,pre);$('history').append(el);el.scrollIntoView({block:'nearest'});}
-function setBusy(value) {busy=value;$('thinking').hidden=!value;document.querySelectorAll('button,input,select').forEach(el=>el.disabled=value||!session);}
+function setBusy(value) {busy=value;$('connection-status').textContent=session?(value?'Procesando tu solicitud':'Listo para ayudarte'):'Conectando…';$('thinking').hidden=!value;document.querySelectorAll('button,input,select').forEach(el=>el.disabled=value||!session);}
 function artifacts(data) {
   if(!data||typeof data!=='object')return [];
   return Object.values(data).filter(v=>v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.sha256==='string'&&typeof v.nombre==='string');
@@ -57,12 +57,12 @@ async function init() {
   try {
     const [sr,cr,hr]=await Promise.all([fetch('/api/session',{method:'POST'}),fetch('/api/cases'),fetch('/api/health')]);
     const [s,c,h]=await Promise.all([sr.json(),cr.json(),hr.json()]);
-    if(!s.ok||!c.ok) {message('No se pudo iniciar el chat o cargar los fixtures.');return;}
+    if(!s.ok||!c.ok) {$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');message('No se pudo iniciar el chat o cargar los fixtures.');return;}
     session=s.session_id;$('case').replaceChildren();
     for(const item of c.data){const o=document.createElement('option');o.value=item.id;o.textContent=`${item.cliente} · ${item.formato.toUpperCase()}`;$('case').append(o);}
     $('mode').textContent=h.mode==='deterministic'?'Modo sin LLM':'LLM para clasificación de intención';
     message('Selecciona una solicitud y pulsa «Preparar borrador». Puedes consultar cada herramienta y descargar los documentos generados.');
-  } catch {message('No se pudo conectar al servidor.');}
-  finally {setBusy(false);}
+  } catch {$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');message('No se pudo conectar al servidor.');}
+  finally {setBusy(false);if(!session){$('connection-status').textContent='Sin conexión';document.querySelector('.connection').classList.add('offline');}}
 }
 init();

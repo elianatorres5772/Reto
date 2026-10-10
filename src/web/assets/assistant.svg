@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+<defs><linearGradient id="shell" x1="30" y1="15" x2="130" y2="145" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#d6c5ff"/></linearGradient><linearGradient id="face" x1="45" y1="45" x2="110" y2="95" gradientUnits="userSpaceOnUse"><stop stop-color="#ad39d9"/><stop offset="1" stop-color="#401975"/></linearGradient><radialGradient id="halo"><stop stop-color="#fff"/><stop offset="1" stop-color="#e3d1ff"/></radialGradient></defs>
+<circle cx="80" cy="80" r="78" fill="url(#halo)"/><path d="M80 37V26" stroke="#9960d6" stroke-width="6" stroke-linecap="round"/><circle cx="80" cy="22" r="7" fill="#c146e0"/>
+<rect x="28" y="56" width="15" height="38" rx="7" fill="#7040ac"/><rect x="117" y="56" width="15" height="38" rx="7" fill="#7040ac"/>
+<rect x="38" y="36" width="84" height="74" rx="27" fill="url(#shell)"/><rect x="45" y="46" width="70" height="53" rx="19" fill="url(#face)"/>
+<ellipse cx="62" cy="66" rx="6" ry="8" fill="#fff"/><ellipse cx="98" cy="66" rx="6" ry="8" fill="#fff"/><path d="M66 82c8 8 20 8 28 0" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M57 116c0-6 10-10 23-10s23 4 23 10v14c0 10-46 10-46 0v-14Z" fill="url(#shell)"/><rect x="66" y="120" width="28" height="8" rx="4" fill="#7341b3"/><path d="m49 115-8 14m70-14 8 14" stroke="#9162c5" stroke-width="9" stroke-linecap="round"/>
+</svg>
