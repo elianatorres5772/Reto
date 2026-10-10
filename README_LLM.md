@@ -64,3 +64,10 @@ No compartas el contenido de `.env` para pedir ayuda. Si publicaste una clave po
 ## Qué información se envía al LLM
 
 La integración usa exclusivamente OpenAI. Envía la pregunta y, para responder, las etiquetas, valores y fuentes obtenidos por las herramientas del caso, junto con hasta cuatro preguntas anteriores del mismo caso. Los fixtures actuales son ficticios. La respuesta visible se construye en el servidor a partir de referencias válidas a esos datos; se rechazan valores o texto libre propuestos por el modelo.
+
+
+## Límites de consumo y despliegue
+
+El archivo `.env.example` incluye límites de pasos por turno, salida, presupuesto por sesión y presupuesto diario del servidor. Se usan valores predeterminados aunque no los copies a tu `.env` existente. `LLM_MAX_SESSION_TOKENS=100000` y `LLM_MAX_DAILY_TOKENS=1000000` son reservas conservadoras, no una medición de consumo facturado. Si alcanzas un límite, los comandos exactos y botones siguen funcionando.
+
+El agente incluido usa OpenAI. `LLM_PROVIDER=openai` debe coincidir con el adaptador. Cambiar ese nombre no instala otro proveedor. Para publicación, configura la clave desde las variables seguras del servicio según [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).

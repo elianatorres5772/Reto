@@ -27,7 +27,10 @@ export function collectEvidence(results: {name:string;data:unknown}[]): Evidence
           add(obj.etiqueta,obj.valor,name);
           add(`Estado de ${obj.etiqueta}`,obj.estado,name);
           add(`Fuente de ${obj.etiqueta}`,obj.fuente,name);
-        } else Object.entries(obj).forEach(([key,item])=>walk(item,`${path ? path+' · ':''}${key.replaceAll('_',' ')}`));
+        } else Object.entries(obj).forEach(([key,item])=>{
+          if(['llenos','faltantes','requiere_confirmacion'].includes(key) || (key==='mapeo'&&results.some(r=>r.name==='proveedor_mapear_campos')) || ('solicitud' in obj&&['campos','pais','cliente','formato','soportes'].includes(key)))return;
+          walk(item,`${path ? path+' · ':''}${key.replaceAll('_',' ')}`);
+        });
       } else add(path,value,name);
     };
     walk(data,'');

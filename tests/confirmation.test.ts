@@ -27,6 +27,7 @@ test('Chat prepara, pregunta, empaqueta, vuelve a preguntar y simula solamente d
   const first=await send('preparar');assert.ok(first.some(e=>e.type==='confirmation'&&e.state==='pending'));
   assert.ok(!first.some(e=>e.type==='tool_call'&&e.name==='proveedor_armar_paquete'));
   const accepted=await send('sí');assert.ok(accepted.some(e=>e.type==='tool_result'&&e.name==='proveedor_armar_paquete'&&(e.result as {ok:boolean}).ok));
+  const cancelled=await send('no');assert.ok(!cancelled.some(e=>e.type==='tool_call'));
   const reuse=await send('sí');assert.ok(!reuse.some(e=>e.type==='tool_call'));
   const simulation=await send('simular');assert.ok(simulation.some(e=>e.type==='confirmation'&&e.state==='pending'));assert.ok(!simulation.some(e=>e.type==='tool_call'));
   const sent=await send('sí');assert.ok(sent.some(e=>e.type==='tool_result'&&e.name==='proveedor_simular_envio'&&(e.result as {ok:boolean}).ok));

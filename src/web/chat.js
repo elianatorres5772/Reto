@@ -8,6 +8,7 @@ function artifacts(data) {
   return Object.values(data).filter(v=>v&&typeof v==='object'&&typeof v.id==='string'&&typeof v.sha256==='string'&&typeof v.nombre==='string');
 }
 function event(e) {
+  if(e.type==='case_selected'){$('case').value=e.caseId;return;}
   if(e.type==='thinking'){$('thinking').hidden=!e.active;return;}
   if(e.type==='message'){message(e.text);return;}
   if(e.type==='confirmation') {

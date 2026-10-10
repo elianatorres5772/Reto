@@ -4,6 +4,7 @@ dist/
 .env.*
 !.env.example
 outputs/
+out/
 *.log
 
 playwright-report/

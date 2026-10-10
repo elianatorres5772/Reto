@@ -63,7 +63,7 @@ test('Genera XLSX real y PDF legible, no modifica fixtures',async()=>{
   const {tools}=authorized();
   const r=await tools.execute('proveedor_generar_formulario',{caso_id:co});assert.ok(r.ok);
   const file=await tools.download(r.data.artefacto.id);assert.ok(file);
-  const book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(file.bytes) as any);
+  const book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(file.bytes) as unknown as Parameters<typeof book.xlsx.load>[0]);
   assert.equal(book.getWorksheet('Datos Bancarios')?.getCell('C5').value,'03100012345');
   assert.equal(book.getWorksheet('Datos Proveedor')?.getCell('C4').value,'900123456');
   assert.ok(book.getWorksheet('Revision borrador'));
@@ -79,23 +79,23 @@ test('Paquete ZIP contiene formulario, soportes exigidos y manifiesto; confirma 
   confirm('proveedor_armar_paquete',co,args.formulario_id);
   const p=await tools.execute('proveedor_armar_paquete',args);assert.ok(p.ok);assert.equal(p.data.listo_para_simular,true);
   const zip=await tools.download(p.data.paquete.id);assert.ok(zip);
-  const files=unzipSync(zip.bytes);assert.equal(Object.keys(files).length,6);assert.ok(files['formulario-borrador.xlsx']);
+  const files=unzipSync(zip.bytes);assert.equal(Object.keys(files).length,8);assert.ok(files['formulario.xlsx']);
   const manifest=JSON.parse(strFromU8(files['manifiesto.json']!));assert.equal(manifest.firma,'pendiente');assert.equal(manifest.soportes.length,4);
   const reuse=await tools.execute('proveedor_armar_paquete',args);assert.equal(reuse.ok,false);
   const denied=await tools.execute('proveedor_simular_envio',{caso_id:co,paquete_id:p.data.paquete.id});assert.equal(denied.ok,false);
   confirm('proveedor_simular_envio',co,p.data.paquete.id);
   const s=await tools.execute('proveedor_simular_envio',{caso_id:co,paquete_id:p.data.paquete.id});assert.ok(s.ok);assert.equal(s.data.envio_real,false);assert.equal(s.data.destinatario,'compras@industrias-delta-ficticia.com');
 });
-test('Bloquea simulación por soporte vencido, inexistente o campo obligatorio pendiente',async()=>{
+test('Soportes vencidos o ausentes bloquean firma; campos faltantes no bloquean por sí solos',async()=>{
   for(const [id,at,missing] of [[co,'2026-10-09',false],[ec,'2026-08-27',true],[hn,'2026-08-29',false]] as const) {
     const {tools,confirm}=authorized(at);
     const f=await tools.execute('proveedor_generar_formulario',{caso_id:id});assert.ok(f.ok);
     confirm('proveedor_armar_paquete',id,f.data.artefacto.id);
-    const p=await tools.execute('proveedor_armar_paquete',{caso_id:id,formulario_id:f.data.artefacto.id});assert.ok(p.ok);assert.equal(p.data.listo_para_simular,false);
+    const p=await tools.execute('proveedor_armar_paquete',{caso_id:id,formulario_id:f.data.artefacto.id});assert.ok(p.ok);assert.equal(p.data.listo_para_simular,id===hn);assert.equal(p.data.listo_para_firma,id===hn);
     if(missing)assert.deepEqual(p.data.soportes_faltantes,['certificado_cumplimiento_tributario']);
     if(id===co)assert.equal(p.data.soportes.find(s=>s.tipo==='camara_comercio')?.estado,'vencido');
     confirm('proveedor_simular_envio',id,p.data.paquete.id);
-    const s=await tools.execute('proveedor_simular_envio',{caso_id:id,paquete_id:p.data.paquete.id});assert.equal(s.ok,false);if(!s.ok)assert.equal(s.error.code,'INCOMPLETE');
+    const s=await tools.execute('proveedor_simular_envio',{caso_id:id,paquete_id:p.data.paquete.id});assert.equal(s.ok,id===hn);if(!s.ok)assert.equal(s.error.code,'INCOMPLETE');
   }
 });
 test('Un archivo faltante en disco no se declara disponible',async()=>{
@@ -107,8 +107,8 @@ test('Un archivo faltante en disco no se declara disponible',async()=>{
     const p=await tools.execute('proveedor_armar_paquete',{caso_id:co,formulario_id:f.data.artefacto.id});assert.ok(p.ok);assert.equal(p.data.soportes.find(s=>s.tipo==='rut')?.estado,'archivo_faltante');assert.equal(p.data.listo_para_simular,false);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
-test('Portal no crea un archivo ni afirma haber ingresado al sitio',async()=>{
-  const tools=createProveedorTools();const r=await tools.execute('proveedor_generar_formulario',{caso_id:pa});assert.equal(r.ok,false);if(!r.ok)assert.equal(r.error.code,'PORTAL_MANUAL');
+test('Portal genera valores copiables, no accede al sitio ni empaqueta automáticamente',async()=>{
+  const tools=createProveedorTools();const r=await tools.execute('proveedor_generar_formulario',{caso_id:pa});assert.ok(r.ok);assert.equal(r.data.formato_no_soportado,true);assert.equal(r.data.artefacto.nombre,'valores-portal.md');const file=await tools.download(r.data.artefacto.id);assert.ok(file);assert.match(strFromU8(file.bytes),/Formato no soportado/);
   const p=await tools.execute('proveedor_armar_paquete',{caso_id:pa,formulario_id:randomUUID()});assert.equal(p.ok,false);if(!p.ok)assert.equal(p.error.code,'PORTAL_MANUAL');
 });
 test('Artefactos no se comparten entre casos o sesiones',async()=>{

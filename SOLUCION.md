@@ -1,111 +1,127 @@
 # Solución del agente de registro como proveedor
 
-## Resultado y alcance de la evidencia
+## 1. Problema y usuaria
 
-El repositorio se creó desde cero sobre los requisitos R1–R5 y 21 adjuntos. Incluye TypeScript sobre Node 22.13+ y pnpm 11.19.0, contratos Zod, las cinco herramientas requeridas, un chat con eventos incrementales, prompt independiente, un demo sin LLM y pruebas de integración.
+La analista administrativa repite la transcripción de datos y la búsqueda de soportes para registrar a la empresa como proveedor; el aplicativo prepara formularios y documentación trazables para revisión y firma humana.
 
-No se adjuntó el PRD completo ni los XLSX/PDF originales. Por ello, se explicitan las decisiones en `docs/ESPECIFICACION.md`; no se atribuyen reglas a una sección no disponible. La agrupación de archivos con nombres repetidos está registrada en `fixtures/reto-01/origen.json` y se infirió del país, formato, etiquetas y soportes. Ningún dato original fue completado o alterado.
+La implementación se alinea con el [PRD v2.0 del 3 de septiembre de 2026](docs/PRD_RETO_01.md), recibido completo después de los primeros desarrollos, y con R1–R5 del usuario. Conserva los 21 fixtures originales sin editar sus contenidos. El maestro y los soportes llegaron en la raíz de `fixtures/reto-01`; el lector admite tanto esa distribución como la distribución `repositorio/` del PRD. Perú está soportado como regla tributaria, pero no se inventó un caso peruano ausente de los adjuntos.
 
-## Arquitectura y SDD
+## 2. Arquitectura y fuentes de verdad
 
 ```mermaid
 flowchart LR
-    UI[Chat HTML y JavaScript] --> HTTP[HTTP y stream NDJSON]
-    HTTP --> Session[Sesión y orquestador]
-    Session --> Gate[Confirmación por turno]
-    Session --> Intent[Clasificador de intención opcional]
-    Intent --> Prompt[agent/prompt.md]
-    Session --> Contracts[Contratos Zod]
-    Contracts --> Tools[Herramientas proveedor]
-    Tools --> Fixtures[Maestro / glosario / casos / soportes]
-    Tools --> Outputs[XLSX / PDF / ZIP / manifiesto]
-    Tools --> Session
-    Session --> UI
+    Chat[Chat HTML y JavaScript] --> HTTP[API HTTP y eventos NDJSON]
+    HTTP --> Agent[Sesión y ciclo del agente]
+    Agent --> Adapter[Interfaz LlmAdapter]
+    Adapter --> OpenAI[OpenAI]
+    Agent --> Gate[Confirmación por turno y artefacto]
+    Agent --> Facade[Herramientas públicas del PRD y Zod]
+    Facade --> Engine[Motor de archivos y reglas]
+    Engine --> Fixtures[Fixtures de solo lectura]
+    Engine --> Out[out: documentos y auditoría]
+    Prompt[agent/prompt.md] --> Adapter
+    Knowledge[src/knowledge/registro-proveedor.md] --> Adapter
 ```
 
-La secuencia SDD fue: inspección de adjuntos, arquitectura comunicada antes de codificar, definición de esquemas, implementación y verificación contra los contratos. `src/contracts/proveedor.ts` define tanto las entradas como las salidas; ninguna herramienta acepta valores libres del modelo ni rutas de archivos. Identificadores fiscales, cuentas y códigos se mantienen como strings. Las funciones de herramienta se despachan usando tipos derivados de Zod.
+El comportamiento del modelo vive en `agent/prompt.md`; el conocimiento del proceso en `src/knowledge/registro-proveedor.md`; la ejecución en `src/tools/`. El servidor no contiene el prompt ni las reglas de mapeo, vigencia o firma. El contrato ejecutable es `src/contracts/proveedor.ts`: entradas y salidas se validan con Zod. `src/tools/proveedor.ts` exporta los cinco objetos obligatorios con `description`, `args` descritos y `execute(args, ctx)` que retorna JSON serializado y captura fallos. El contexto confiable contiene raíz del proyecto y UUID de sesión; no procede del modelo.
 
-El servidor en `src/server/index.ts` solo maneja HTTP, validación de transporte, sesiones, archivos autorizados y protección de origen. El flujo, la confirmación, el mapeo y las vigencias viven en módulos separados. El único system prompt es `agent/prompt.md`, leído desde disco por el adaptador LLM; no hay prompt duplicado en el servidor.
+La fachada pública usa `{caso}`, `{caso,campos}`, `{caso,mapeo}`, `{caso}` y `{caso,confirmado}`. El motor conserva contratos internos con `caso_id` y UUID de artefacto para seguridad y compatibilidad con las pruebas existentes. La aplicación y el demo invocan la fachada pública. Los campos y el mapeo aportados se contrastan con los fixtures: pasar un valor inventado no modifica el maestro ni el formulario.
 
-## R1: datos verificables y prevención de alucinaciones
+## 3. Ciclo, límites y confirmación humana
 
-El modelo retorna una intención enumerada o, para consultas, un estado y referencias numéricas a evidencia retornada por herramientas. Ambos contratos son estrictos y se validan con Zod. Las consultas ejecutan lectura y mapeo sin generar archivos, y pueden consultar resultados previos del mismo caso. El servidor construye la respuesta con etiquetas, valores y fuentes; no presenta prosa libre del modelo. Referencias inexistentes, propiedades adicionales, cuentas inventadas o JSON inválido provocan una respuesta controlada. Esto permite responder preguntas sin permitir que el modelo cree datos, argumentos ni autorizaciones. La selección puede ser poco pertinente: validar referencias evita valores inventados, pero no garantiza que el modelo seleccione la mejor evidencia.
+Por turno, el agente valida el caso y la sesión, cancela o consume la confirmación inmediata, clasifica la intención, ejecuta la secuencia permitida de herramientas y construye la respuesta. Para preguntas, vuelve a leer y mapear el caso, envía evidencia al LLM y valida las referencias seleccionadas. Es un ciclo con rutas acotadas, no un bucle abierto que permita al modelo ejecutar herramientas arbitrarias.
 
-Los mensajes con datos se serializan desde resultados de herramientas. Cada campo mapeado incluye etiqueta, ruta de maestro, valor, estado y fuente. El chat no ofrece una vía para sobrescribir el maestro con mensajes del usuario. Las plantillas, solicitudes y documentos se tratan como datos, no como instrucciones. El frontend usa `textContent` y no inserta HTML procedente de herramientas o del usuario.
+`AGENT_MAX_ITERATIONS` limita pasos visibles de herramientas y llamadas al modelo (predeterminado 25, máximo 25). Al alcanzar el límite conserva los resultados en el historial y termina con un mensaje claro. Los fallos del proveedor tienen timeout configurable y no cierran la sesión.
 
-El glosario contiene RUC y RTN como equivalentes de `nit`. Se aplica esa equivalencia tal como fue suministrada, con advertencia explícita sobre la revisión fiscal extranjera. El país del proveedor sigue siendo CO. No se inventan referencias comerciales ni número de contribuyente especial.
+`ConfirmationGate` exige una pregunta explícita y la afirmación completa en el turno inmediatamente posterior. El permiso especifica caso, acción y artefacto y se consume una vez. `confirmado:true` por sí solo no autoriza la simulación. Empaquetar también exige confirmación por la instrucción R4 original del usuario. Después del paquete se muestra un resumen y una nueva pregunta para la simulación. Una consulta, rechazo o cambio de caso cancela el permiso pendiente. Esta doble confirmación conserva la instrucción original incluso cuando el ejemplo del PRD parezca condensar la preparación en un turno.
 
-## R3: herramientas defensivas
+El prompt de defensa que nombra un caso cambia la selección solo después de verificarlo mediante una herramienta. Primero se reportan campos y evaluación previa de soportes; el paquete se crea tras confirmar. Evaluación previa no significa paquete existente, documento firmado ni aceptación del cliente.
 
-Las entradas y las salidas de las cinco herramientas se verifican con Zod. Errores internos se capturan en la frontera pública y retornan un contrato controlado. Las excepciones de librerías, JSON corrupto y archivos inexistentes no escapan como errores crudos ni cierran la sesión.
+## 4. Modelo, costo y control de gasto
 
-Se resuelven rutas reales y se bloquean escapes por symlinks. Los UUID de artefactos son internos a una instancia de herramientas; se comprueba caso, tipo y sesión. El formulario tiene SHA-256 y su contenido se comprueba antes de empaquetarlo. Las descargas solo utilizan archivos del registro interno, nunca una ruta enviada por el cliente.
+Se eligió OpenAI `gpt-4.1-mini` por el soporte de salida JSON estructurada y porque la tarea requiere clasificación y selección de datos, no redacción extensa. `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin modificar el ciclo; su nombre debe coincidir con `LLM_PROVIDER`. La implementación incluida es OpenAI; no se afirma haber integrado otros proveedores.
 
-La vigencia se evalúa con `vigencia_hasta` del índice: la fecha límite es inclusiva y null significa que el índice no fija vencimiento. La existencia en el índice no sustituye la existencia física del archivo. No se certifica autenticidad legal, antigüedad de emisión o validez en otro país; los placeholders no contienen evidencia suficiente para ello.
+Los esquemas de argumentos se convierten desde Zod con `zod-to-json-schema`; el modelo recibe descripciones y contratos. `tool_choice:none` mantiene el despacho bajo control de la aplicación. Solo puede elegir una intención o referencias a evidencia; el código nunca publica prosa libre ni argumentos ejecutables sugeridos por el modelo.
 
-## R4: confirmación humana obligatoria
+Una consulta suele requerir dos llamadas: clasificación y selección. Los botones y comandos exactos no llaman al LLM. El costo real depende del texto, las herramientas y las tarifas vigentes. Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`. Como ejemplo de estimación, no cotización vigente, 20.000 tokens de entrada y 1.500 de salida con tarifas supuestas de USD 0,40 / USD 1,60 por millón darían **USD 0,0104 por caso**. Verificar precios actuales en https://openai.com/api/pricing/ antes de publicar. No se midió consumo real sin una clave disponible.
 
-`ConfirmationGate` registra una pregunta por acción, caso y artefacto. Solo la respuesta afirmativa inmediata crea un permiso de un uso; un turno intermedio, rechazo o cambio de caso cancela la pregunta. El propio código de herramientas exige autorización mediante un callback del contexto de sesión; agregar `confirmed: true` al input no sirve y se rechaza por Zod.
+El runtime reserva un presupuesto conservador basado en bytes UTF-8 de la carga completa, margen de protocolo y salida máxima. `LLM_MAX_SESSION_TOKENS` limita la sesión y `LLM_MAX_DAILY_TOKENS` limita el proceso por día UTC; crear otra sesión no elimina el segundo límite. Se cuentan reservas de llamadas fallidas y no se reembolsan según `usage`. Esto puede bloquear antes del consumo real. Los límites se reinician al reiniciar el proceso y no se comparten entre réplicas; en producción se requiere un contador central y un límite de gasto en la cuenta del proveedor. También se limita el ritmo de POST por IP con `CHAT_RATE_LIMIT`.
 
-El empaquetado también requiere confirmación, según el alcance conservador de R4. Los paquetes incompletos se permiten como borradores para inspección, pero bloquean simulación. La simulación requiere otra pregunta y permiso. Ni el chat ni el demo envían correo, llaman un portal o firman documentos. La firma figura como pendiente incluso en un resultado exitoso.
+## 5. Portales web — diseño de §7.4
 
-El demo actúa como harness: pregunta y emula el turno afirmativo para verificar el gate sin una interfaz ni clave. No elimina ni desactiva la comprobación de las herramientas. Además prueba llamadas sin autorización antes de las autorizadas.
+El caso PA produce `valores-portal.md` y declara «formato no soportado». No inicia sesión ni afirma haber cargado datos. El operador copia los valores y revisa equivalencias y soportes.
 
-## Generación documental y trade-offs
+Una integración futura usaría Playwright/RPA con selectores de etiquetas y roles, pruebas por versión del portal, captura de errores y pausa ante layout desconocido. La automatización solo prepararía campos y adjuntos en una sesión controlada; antes de cambios críticos se mostraría una vista previa. CAPTCHA, MFA, cambios de estructura y restricciones del cliente obligan a detenerse y ceder el control al humano, sin intentos de elusión.
 
-ExcelJS genera XLSX reales con hojas, etiquetas y valores en las celdas del mapa. Las cuentas conservan ceros iniciales. Se añade una hoja de revisión que identifica el documento como reconstruido y sin firma. pdf-lib genera un PDF de lectura con los campos suministrados; no se afirma que preserve el diseño o AcroForm de una plantilla inexistente. Los valores desconocidos quedan vacíos o marcados como pendientes.
+Las credenciales las ingresa el operador directamente en el navegador del portal, o las obtiene de un gestor corporativo autorizado fuera del prompt y de los fixtures. No pasan al LLM, al repositorio ni a logs. En un navegador remoto, se deshabilitarían grabaciones de las pantallas de autenticación, se aislarían perfiles por operador y se destruirían cookies al terminar. El ingreso de credenciales, la resolución de MFA/CAPTCHA y el clic final «Enviar» serían humanos. La autorización de preparación no sustituye esa decisión.
 
-El paquete ZIP incluye el formulario, solo los soportes disponibles exigidos para el caso y `manifiesto.json`. Los soportes faltantes o vencidos se describen en el manifiesto; no se sustituyen con otros documentos. El SHA-256 y tamaño del ZIP se retornan en la herramienta; no se incluyen dentro de su propio manifiesto porque generaría una dependencia circular.
+## 6. Decisiones y trade-offs
 
-El frontend es HTML y JavaScript plano, sin build ni bundle: reduce dependencias y permite inspeccionar el flujo. Usa NDJSON sobre `fetch` para recibir llamadas y resultados en orden. El indicador de procesamiento es estado de ejecución, no exposición de razonamiento interno. Las confirmaciones se muestran en pantalla y en el historial. Cada artefacto puede descargarse usando el token de la sesión en un header.
+| Decisión | Alternativa descartada y motivo |
+|---|---|
+| Respuestas construidas con referencias a evidencia | Prosa libre del LLM: permitiría introducir nombres, cuentas o estados sin fuente verificable. La selección puede ser poco pertinente, pero los valores presentados provienen de herramientas. |
+| Fachada pública y motor interno con UUID | Confiar en rutas y `confirmado` enviados por el modelo: permitiría descargar o usar artefactos ajenos y saltar confirmaciones. |
+| HTML/JavaScript sin framework | SPA con build adicional: no aporta una necesidad del reto y añade dependencias. El backend y las herramientas siguen en TypeScript. |
+| Documentos reconstruidos desde mapas JSON | Rellenar binarios originales: no fueron entregados. Excel conserva hojas y celdas del mapa; PDF conserva orden, etiqueta y valor, modalidad aceptada por el PRD. |
+| Exportación canónica y copias privadas de descarga | Sobrescribir el archivo de una sesión al preparar otra: los UUID privados mantienen las descargas aisladas. Las rutas `out/<caso>/` muestran la última exportación y pueden cambiar entre sesiones. |
+| Presupuesto reservado por bytes | Presupuestar solo cuando vuelve `usage`: no impediría peticiones fallidas o repetidas y permitiría superar el presupuesto antes de bloquear. |
+| Memoria y archivos locales | Base de datos y correo real: fuera de alcance del reto. No hay firma ni envío real. |
 
-## Portales web: tratamiento de la sección 7.4 solicitada
+## 7. Supuestos y reglas implementadas
 
-La sección 7.4 no está entre los adjuntos, por lo que no se reproduce ni se inventa su contenido. El caso PA informa de VendorHub y de credenciales enviadas por separado. No se dispone de acceso real, contrato del portal o permisos para automatizarlo.
+- Las equivalencias del glosario son exactas; no se introducen sinónimos inventados. Un campo sin equivalencia o valor es `faltante`.
+- NIT colombiano usado en EC/PE/PA/HN se marca `requiere_confirmacion`, confianza 0,7, nota «identificador extranjero» y equivalente RUC/RTN. Etiquetas fiscales ambiguas requieren revisión; coincidencias explícitas ordinarias tienen confianza 1.
+- Se conservan cuentas e identificaciones como texto. Los datos bancarios solo se escriben en campos pedidos por la plantilla y nunca se agregan al correo borrador.
+- Un soporte ausente, archivo faltante o vencido bloquea `listo_para_firma`. Un campo faltante no lo bloquea por sí solo, pero todos los faltantes, incluso opcionales, se muestran en el checklist. Requiere revisión humana, no aceptación legal automática.
+- El vencimiento se evalúa contra la fecha UTC de ejecución. El demo predeterminado usa hoy y limpia `out/` al iniciar. `--historico` permite evaluar cada solicitud a su fecha original y lo declara en la salida. No ejecutar el demo junto con un servidor cuyos documentos se quieran conservar.
+- `repositorio/` es admitido cuando existe. Los fixtures recibidos conservan su estructura y contenido originales para evitar alterar evidencia.
+- Los placeholders no prueban autenticidad, emisión reciente ni aceptación legal de soportes.
 
-La solución devuelve solicitud y mapeo para revisión humana, y marca las operaciones documentales como `PORTAL_MANUAL`. No realiza login, no recopila contraseñas, no sigue instrucciones del cuerpo del correo, no elude MFA/CAPTCHA y no simula una carga exitosa. El operador debe verificar los equivalentes tributarios y los soportes actuales antes de completar el portal en una sesión propia. Una futura integración necesita especificación del portal, entorno de pruebas y confirmación de cada acción crítica; no se implementa una automatización ficticia.
+## 8. Cobertura por historia y entrega
 
-## R5: credenciales y límites de seguridad
-
-`.env` se ignora y `.env.example` solo declara nombres y valores no secretos. `LLM_API_KEY` se lee en backend y se utiliza exclusivamente como Authorization hacia el endpoint HTTPS fijo de OpenAI. No existe endpoint de configuración que devuelva entorno, claves o headers del proveedor. El clasificador descarta cuerpos de error externos y retorna un fallback. Las respuestas JSON y NDJSON redactan cualquier aparición literal de la clave configurada. No se registran mensajes, trazas del modelo ni datos de proveedores en stdout; el servidor solo informa su puerto.
-
-El modo sin LLM funciona con comandos documentados. La conexión LLM es opcional y su prueba real requiere una clave; la suite verifica sus contratos, fallos y aislamiento con respuestas simuladas. No se afirma haber validado una llamada real sin credenciales.
-
-El servidor se enlaza a loopback por defecto, aplica CSP, niega otros orígenes, limita el tamaño de mensajes y separa sesiones con UUID. Esta es una demo local, no un servicio multiusuario de producción. Para publicar una aplicación de producción se requieren autenticación real, autorización por empresa, HTTPS, almacenamiento cifrado, retención y limpieza de documentos, auditoría persistente, límites de tráfico y política legal. Las sesiones actuales caducan por inactividad y no sobreviven a reinicios; los archivos generados quedan en outputs y deben gestionarse según la retención elegida.
-
-## Dependencias
-
-La auditoría inicial detectó GHSA-w5hq-g745-h8pq en uuid transitivo de ExcelJS. Se fijó un override localizado a uuid 11.1.1, que conserva el export CommonJS de v4 usado por ExcelJS. La generación y lectura de XLSX se vuelven a verificar con esta resolución; no se degrada ExcelJS ni se desactiva la auditoría. El lockfile fija las versiones resueltas.
-
-## Verificación y resultados esperados
-
-`pnpm run check` ejecuta TypeScript, pruebas y demo. `bun run demo.ts` funciona sin clave; también se ofrece Bun local mediante `pnpm exec bun run demo.ts`. CI instala con `pnpm install --frozen-lockfile`, utiliza Node 22 y ejecuta las mismas comprobaciones.
-
-Las pruebas cubren contratos estrictos; traversal y symlinks; JSON corrupto y plantillas inválidas; datos y procedencia; lectura de los XLSX/PDF generados; contenido del ZIP; soportes inexistentes y vencidos; confirmación por turno y consumo; separación de casos y sesiones; LLM inválido y errores sin secretos; inicio HTTP, eventos, descargas, rechazo de origen y continuidad después de errores.
-
-| Caso | Evaluación histórica del demo | Comportamiento |
+| Historia / componente | Estado | Evidencia y límite de producción |
 |---|---|---|
-| CO | 2026-08-25 | 17 campos, 4 soportes y simulación local del borrador |
-| EC | 2026-08-27 | 14 campos; falta certificado de cumplimiento tributario; simulación bloqueada |
-| HN | 2026-08-29 | 10 campos; referencias comerciales pendientes; simulación bloqueada |
-| PA | 2026-09-01 | 9 campos; flujo manual de portal |
+| HU-1: leer solicitud y plantilla | Hecho | País, cliente, formato, campos, revisiones y soportes; plantilla corrupta permite seguir leyendo el correo con advertencia. |
+| HU-2: mapear y reportar faltantes | Hecho | Fuente del maestro, tres estados, confianza y revisión tributaria; falta validación legal de equivalencias reales. |
+| HU-3: Excel/PDF | Hecho | Hojas/celdas del mapa y PDF ordenado; no hay binarios originales que preservar. |
+| HU-3: portal | Hecho para alcance P2 | Archivo copiable y declaración de formato no soportado; acceso real excluido. |
+| HU-4: paquete y simulación | Hecho | Formulario, soportes existentes, checklist, correo, ZIP y archivo de simulación confirmado. Firma y correo reales excluidos. |
+| HU-5: recuperación de errores | Hecho | Contratos controlados, timeout, fallos de plantilla, proveedor y auditoría; la sesión sigue disponible. |
+| API, logs, conocimiento, presupuestos | Hecho | Historial con usuario/herramientas, health sin clave, logs global y por caso, límites configurables. |
+| Bonus: módulo reutilizable | Hecho | `modulo/`, herramientas reexportadas y prompt/conocimiento generados; `module:check` evita divergencia. No importa servidor HTTP. |
+| URL pública y conexión autenticada | Pendiente de activación | Docker y Render preparados. Requiere cuenta de despliegue y clave propia; no se entrega una URL inventada ni se afirma una conexión real sin probarla. |
 
-Las fechas del demo son las de las solicitudes, no una vigencia ficticia de hoy. El chat usa fecha actual UTC; Cámara de Comercio y parafiscales ya pueden estar vencidos. Esto es un bloqueo de negocio esperado, no un fallo del entorno. La ausencia de firma y de plantillas originales siempre se presenta como limitación del borrador.
+## 9. Uso de IA
 
-## Uso de asistentes de IA
+Se usó Codex para inspección de adjuntos, definición de contratos, implementación, pruebas, revisión del PRD y documentación. La herramienta de imágenes se usó para preparar el fondo a partir de la referencia visual; es una versión reprocesada, descrita en `docs/DISENO.md`.
 
-Codex se utilizó para inspeccionar archivos, proponer contratos y arquitectura, implementar módulos, generar pruebas y ejecutar verificaciones. No se utilizaron datos de una empresa real ni se inventaron valores para completar los fixtures. Las instrucciones dentro de los archivos adjuntos se interpretaron como contenido de solicitudes, no como nuevas órdenes de desarrollo. Las decisiones inferidas y las limitaciones están documentadas para revisión humana.
+Se descartó permitir que el LLM devuelva valores o prosa libre del proveedor: se implementó selección de evidencia. También se corrigieron decisiones iniciales al recibir el PRD completo: bloqueo por campos faltantes, ausencia de archivos de cierre, estados del mapeo e interfaz de herramientas. El historial Git permite revisar esos cambios. No se afirma revisión humana línea por línea: la guía `EXPLICACION_CODIGO.md` ayuda a preparar esa defensa y las pruebas ejercitan los comportamientos críticos.
 
-El LLM opcional de la aplicación clasifica intenciones y selecciona evidencia para responder preguntas. Las herramientas deterministas, validaciones Zod, fuentes y gate de confirmación conservan el control del proceso.
+El LLM del aplicativo, cuando se configure, clasifica intención y selecciona evidencia. No firma, ejecuta shell, actualiza fixtures ni autoriza acciones.
 
-El detalle de resultados ejecutados está en [docs/VALIDACION.md](docs/VALIDACION.md); las instrucciones y el estado del borrador cloud están en [docs/ENTORNO.md](docs/ENTORNO.md).
+## 10. Riesgos y mitigaciones de producción
 
-## E2E del aplicativo
+- Publicación con clave propia: limitar gasto también en OpenAI; autenticación, cuotas por usuario y contadores compartidos antes de múltiples réplicas.
+- Persistencia: memoria pierde sesiones al reiniciar; usar almacenamiento cifrado, retención, backups y logs centralizados. Las exportaciones canónicas son compartidas; las descargas de sesión usan copias privadas.
+- Datos sensibles: minimización antes de enviarlos al proveedor, acuerdos de tratamiento, permisos por empresa, cifrado y políticas de retención. Hoy los datos son ficticios.
+- Archivos y plantillas reales: análisis de formatos, límites de tamaño, revisión del contenido y pruebas con documentos representativos.
+- Firma y validez legal: mantener revisión humana y verificar equivalencias y vigencias con el dueño del dato.
+- Despliegue gratis: puede dormir o borrar archivos. Mantener el servicio activo para la defensa y descargar el paquete. No se comprobó el arranque en menos de dos minutos en una máquina limpia.
 
-La suite en `tests/e2e/` añade Playwright con Chromium real: UI, confirmaciones inmediatas, bloqueo de permisos reutilizados, generación y descarga de XLSX/PDF/ZIP, pendientes por caso, vigencias, portal manual, recuperación de errores, XSS y aislamiento de descargas. La fuente de resultados sigue siendo el servidor y las herramientas reales. El estado de procesamiento se observa reteniendo una petición antes de continuarla; la recuperación de conexión se prueba con un aborto único.
+La evidencia ejecutada está en `docs/VALIDACION.md`, la configuración en `README_LLM.md`, el despliegue en `docs/DESPLIEGUE.md` y la explicación completa del código y su evolución en `EXPLICACION_CODIGO.md`.
 
-Dos servidores de prueba utilizan copias temporales: una original y otra con vigencias sintéticas para el camino exitoso. No se alteran los fixtures versionados ni se cambia el reloj de la aplicación. Las sesiones y los outputs de la suite se aíslan de la instancia de desarrollo. `pnpm run test:e2e` ejecuta la suite; `pnpm run check:all` incluye las comprobaciones anteriores. CI instala Chromium y conserva reportes y trazas de fallos. El detalle está en [tests/e2e/README.md](tests/e2e/README.md).
+## Dependencias justificadas
 
-## Consultas y configuración del LLM
+| Dependencia | Necesidad |
+|---|---|
+| Zod | Validar entradas, salidas, fixtures e interfaces de herramientas. |
+| zod-to-json-schema | Derivar contratos del modelo desde los mismos esquemas Zod, sin mantener otra definición manual. |
+| ExcelJS | Crear y verificar libros XLSX con hojas/celdas del mapa. |
+| pdf-lib | PDF generado con etiquetas y valores ordenados; no depende de una plantilla binaria ausente. |
+| fflate | Crear y comprobar el ZIP de formulario, soportes y documentación. |
+| dotenv | Leer configuración local de backend desde `.env`. |
+| TypeScript, tipos Node y tsx | Tipado estricto, compilación y ejecución local de fuentes/scripts. |
+| Playwright | E2E de navegador y descargas contra backend real. |
+| Bun local | Verificar el comando de demo exigido, sin obligar al usuario a instalarlo globalmente. |
 
-`src/agent/answers.ts` define el contrato y el renderizador de respuestas basadas en evidencia. El contexto de herramientas y hasta cuatro preguntas anteriores se limita a la sesión y al caso; se limpia al cambiar de caso. Una consulta cancela cualquier confirmación pendiente. La clave se configura únicamente en `.env`, según [README_LLM.md](README_LLM.md). El indicador de configuración no certifica conectividad. Los errores HTTP, tiempos de espera y respuestas inválidas no exponen cuerpos de error externos ni interrumpen la sesión.
+`pnpm-workspace.yaml` fija `exceljs>uuid` en 11.1.1 para sustituir una versión transitiva vulnerable manteniendo el uso CommonJS de ExcelJS. El lockfile conserva integridad y versiones. La auditoría actual de producción no encontró vulnerabilidades conocidas.

@@ -82,7 +82,7 @@ Para usar el chat:
 4. Abre una tarjeta de herramienta pulsando su título para ver los resultados o descargar el formulario.
 5. Cuando pregunte si deseas preparar el paquete, revisa lo mostrado y pulsa **Sí, confirmo**, o **No, cancelar**. La respuesta debe darse en el siguiente turno; otro mensaje cancela la autorización.
 6. Si confirmaste el paquete, abre su tarjeta para descargar el ZIP.
-7. Pulsa **Simular envío**. Esta acción solicita una confirmación nueva y puede bloquearse si faltan datos o soportes vigentes.
+7. Pulsa **Simular envío**. Esta acción solicita una confirmación nueva y puede bloquearse si faltan soportes o están vencidos.
 
 También puedes escribir en el chat: `leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen` o `ayuda`. Estos textos se escriben **en el chat**, no en la terminal.
 
@@ -102,7 +102,7 @@ pnpm run demo
 
 **Qué debes ver:** un resumen con `casos_ejecutados: 4`. Es normal ver bloqueos como `INCOMPLETE` y `PORTAL_MANUAL` para casos que requieren información o gestión humana.
 
-La demostración evalúa los soportes a la fecha original de cada solicitud. El chat evalúa su vigencia a la fecha actual. Por eso, un caso puede funcionar en la demostración histórica y quedar bloqueado hoy en el chat.
+La demostración y el chat evalúan los soportes a la fecha UTC actual. Para comparar con las fechas originales puedes ejecutar `pnpm run demo:historico`; ese modo lo anuncia y no acredita vigencia de hoy. La demostración limpia la carpeta `out/`: detén el servidor y descarga tus documentos antes de ejecutarla.
 
 ### Ejecutar las pruebas del funcionamiento interno
 
@@ -112,7 +112,7 @@ pnpm test
 
 **Qué hace:** comprueba datos, documentos, permisos, errores y comunicación con el servidor.
 
-**Qué debes ver:** en esta versión, 17 pruebas aprobadas (`pass 17`) y ninguna fallida (`fail 0`).
+**Qué debes ver:** en esta versión, 25 pruebas aprobadas (`pass 25`) y ninguna fallida (`fail 0`).
 
 ### Comprobar el código, las pruebas y la demostración juntos
 
@@ -158,7 +158,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 
 Este comando es específico de Linux y de este entorno; no lo copies en una terminal de Windows.
 
-**Qué debes ver:** `18 passed`. Significa que los 18 escenarios E2E fueron aprobados. Es normal no ver una ventana de navegador: las pruebas lo utilizan en segundo plano.
+**Qué debes ver:** `19 passed`. Significa que los 19 escenarios E2E fueron aprobados. Es normal no ver una ventana de navegador: las pruebas lo utilizan en segundo plano.
 
 Las pruebas trabajan con copias temporales de los datos. No cambian las solicitudes originales y no realizan envíos reales.
 
@@ -190,7 +190,7 @@ pnpm run check:all
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all
 ```
 
-Comprueba el código TypeScript, las 20 pruebas internas, la demostración y los 18 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
+Comprueba el código TypeScript, las 25 pruebas internas, la demostración y los 19 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
 
 ## 8. Detener y volver a iniciar el aplicativo
 
@@ -202,7 +202,7 @@ Para volver a iniciarlo, desde la carpeta del proyecto ejecuta otra vez:
 pnpm run dev
 ```
 
-Al reiniciar el servidor o recargar la página se inicia una sesión nueva. Descarga los documentos que quieras conservar antes de cerrar tu sesión. Los archivos generados se guardan en `outputs/`; no se suben a GitHub.
+Al reiniciar el servidor o recargar la página se inicia una sesión nueva. Descarga los documentos que quieras conservar antes de cerrar tu sesión. Los archivos generados se guardan en `out/`; no se suben a GitHub.
 
 ## 9. Problemas frecuentes
 
@@ -243,3 +243,12 @@ Si quieres que el chat reconozca solicitudes escritas con otras palabras, pide a
 Para el primer uso, sigue los pasos en orden. En usos posteriores, normalmente basta con abrir la carpeta, ejecutar `pnpm run dev` y abrir el chat.
 
 Para activar preguntas con inteligencia artificial y saber dónde pegar la clave, sigue [README_LLM.md](README_LLM.md). La clave va en `.env`, no en este documento ni en el chat.
+
+
+## Documentos y explicación del código
+
+Para conocer todo el código y los cambios desde el primer push, abre [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md). Para publicar y obtener un link real, consulta [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). La configuración de Render no significa que ya exista un sitio público.
+
+Los documentos quedan en `out/<caso>/`. Ahí puedes encontrar el formulario, la carpeta `paquete`, su checklist y borrador de correo. Solo una simulación autorizada y sin soportes bloqueantes crea `ENVIO-SIMULADO.md`. El archivo `valores-portal.md` sirve para copiar los valores manualmente en Panamá.
+
+En Honduras, las referencias comerciales faltantes se muestran para revisión, pero no bloquean por sí solas «listo para firma». Los soportes vencidos o ausentes sí lo bloquean. Después de confirmar el paquete, el chat pregunta por la simulación; otro «sí» en el turno inmediato siguiente autoriza esa nueva acción.

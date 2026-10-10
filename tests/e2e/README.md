@@ -29,7 +29,7 @@ Playwright inicia tres servidores exclusivos en puertos 3101, 3102 y 3103; falla
 
 El flujo usa la UI para generar el borrador, responder a cada pregunta y descargar documentos. Se verifican hashes, cuenta con cero inicial dentro del XLSX, lectura del PDF y contenido del ZIP. La simulación se comprueba como local y sin envío real. No se desactiva el gate de autorización.
 
-## Cobertura: 18 escenarios
+## Cobertura: 19 escenarios
 
 1. CO: preparación, confirmaciones separadas, descargas XLSX/ZIP y simulación.
 2. Rechazo explícito de confirmación.
@@ -38,9 +38,9 @@ El flujo usa la UI para generar el borrador, responder a cada pregunta y descarg
 5. Cambio de caso invalida la pregunta.
 6. Un permiso consumido no se reutiliza.
 7. Ecuador: dato opcional desconocido, PDF y soporte faltante.
-8. Honduras: referencia desconocida y bloqueo de simulación.
+8. Honduras: referencia desconocida en checklist; RN3 permite firma/simulación con soportes vigentes.
 9. Fixtures originales: soportes vencidos y bloqueo a fecha actual.
-10. Panamá: gestión manual, sin archivos ni llamadas externas.
+10. Panamá: valores-portal.md descargable, sin acceso ni envío externo.
 11. Plantilla corrupta: error controlado y siguiente turno funcional.
 12. Indicador de procesamiento y acciones deshabilitadas durante una petición.
 13. Pérdida de conexión y recuperación de la sesión.
@@ -50,6 +50,7 @@ El flujo usa la UI para generar el borrador, responder a cada pregunta y descarg
 16. Pregunta sin clave: orientación de configuración y continuidad del chat.
 17. Consulta con LLM simulado: cuenta respaldada por herramientas y cancelación de confirmación.
 18. Respuesta LLM inválida: error controlado, sin clave expuesta y siguiente turno funcional.
+19. Prompt de defensa: selección del caso nombrado, reporte estructurado y pregunta antes de empaquetar.
 
 Además del proveedor LLM simulado del servidor 3103, las intervenciones sobre la red son una pausa controlada antes de continuar una petición real para observar el indicador, y un aborto único para probar recuperación. No reemplazan el backend ni sus contratos. En los demás escenarios el tráfico completo llega al servidor real.
 

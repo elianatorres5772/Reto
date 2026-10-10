@@ -1,60 +1,52 @@
-# Especificación implementable y criterios de aceptación
+# Contratos y criterios de aceptación del PRD v2.0
 
-## Base documental
+La fuente ejecutable es `src/contracts/proveedor.ts`; `src/tools/proveedor.ts` expone los objetos de herramienta con descripciones, argumentos Zod descritos y `execute(args, ctx): Promise<string>`. Los cinco contratos públicos se invocan desde chat, demo y módulo.
 
-Esta especificación deriva del mensaje de requisitos del usuario (R1–R5) y de los 21 archivos adjuntos. No se suministró el PRD completo, incluida su sección 7.4, ni las plantillas binarias originales. No se afirma conformidad con documentos ausentes. `fixtures/reto-01/origen.json` registra la agrupación inferida, sin alterar el contenido de los archivos originales.
-
-El maestro identifica una empresa colombiana ficticia. El glosario asocia RUC y RTN a `nit`; se aplica esta equivalencia textual sin afirmar que un NIT colombiano sea una identificación local válida. Los campos sin equivalencia permanecen nulos. En los mapas XLSX sin bandera `obligatorio`, se adopta un criterio conservador: todos los campos son obligatorios. El PDF y el portal conservan las banderas suministradas.
-
-## Contratos antes de implementación
-
-La fuente ejecutable de verdad es `src/contracts/proveedor.ts`. Entradas y salidas se validan con Zod. Todos los argumentos son objetos estrictos: propiedades adicionales, rutas, autorizaciones del cliente y fechas imposibles se rechazan.
-
-| Herramienta | Entrada | Datos de salida |
+| Herramienta | Entrada pública | Salida mínima, además de metadatos trazables |
 |---|---|---|
-| proveedor_leer_solicitud | `{caso_id}` | solicitud validada, soportes exigidos, fuente y necesidad de portal manual |
-| proveedor_mapear_campos | `{caso_id}` | etiqueta, campo maestro, valor original, fuente, estado, obligatoriedad y faltantes |
-| proveedor_generar_formulario | `{caso_id}` | artefacto UUID con SHA-256, mapeo, advertencias, borrador y firma pendiente |
-| proveedor_armar_paquete | `{caso_id, formulario_id, fecha_evaluacion?}` | ZIP, formulario, manifiesto, soportes, pendientes y elegibilidad para simulación |
-| proveedor_simular_envio | `{caso_id, paquete_id}` | destinatario obtenido de solicitud, estado simulado, envío real falso, firma pendiente |
+| proveedor_leer_solicitud | `{caso}` | País, cliente, formato, campos y soportes. |
+| proveedor_mapear_campos | `{caso,campos}` | `llenos`, `faltantes`, `requiere_confirmacion` y evaluación previa de soportes. |
+| proveedor_generar_formulario | `{caso,mapeo}` | `ruta`, `formato`, UUID descargable, mapeo y firma pendiente. |
+| proveedor_armar_paquete | `{caso}` | `ruta`, `listo_para_firma`, `checklist`, correo y ZIP. |
+| proveedor_simular_envio | `{caso,confirmado}` | `ruta` y UUID de `ENVIO-SIMULADO.md`, estado simulado y envío real falso. |
 
-`fecha_evaluacion` es una opción para pruebas directas y análisis histórico. No se acepta fecha futura, y la simulación vuelve a verificar vigencias con el reloj vigente. El chat no permite inyectar una fecha. El demo inyecta un reloj de prueba en la fecha de cada solicitud y lo declara en su salida.
+`ctx.directory` es la raíz confiable del proyecto; `ctx.sessionId` es un UUID. El contexto puede incluir un motor y callback de autorización confiables para integración. Esos valores nunca los proporciona el modelo. Entradas externas adicionales son rechazadas; en la lista de campos se eliminan anotaciones de lectura antes de comprobar igualdad con la plantilla.
 
-Cada llamada retorna `{ok:true,data}` o `{ok:false,error:{code,message,retryable}}`. Los errores públicos no incluyen valores de secretos, rutas internas, stacks o respuestas crudas del proveedor LLM. Los códigos son `INVALID_INPUT`, `NOT_FOUND`, `INVALID_FIXTURE`, `IO_ERROR`, `CONFIRMATION_REQUIRED`, `INCOMPLETE`, `PORTAL_MANUAL`, `INVALID_OUTPUT`.
+Cada ejecución devuelve un string JSON `{ok:true,data}` o `{ok:false,error:{code,message,retryable}}`. El esquema de salida se valida. La fachada transforma al motor interno, que conserva contratos con `caso_id` y UUID para no confiar en rutas ni permisos enviados por el modelo.
 
-## Máquina de estados de autorización
+## Mapeo y país
 
-1. El agente emite una pregunta explícita con acción, caso y UUID del artefacto.
-2. El siguiente turno del usuario es una afirmación completa e inequívoca (`sí`, `si`, `confirmo`, `confirmar`, `acepto`, `de acuerdo`, `yes`, opcionalmente con punto o exclamación).
-3. La autorización se comprueba y consume una sola vez para esa combinación.
-4. Cualquier otra respuesta, cambio de caso o turno intermedio cancela la pregunta. Las autorizaciones no provienen del LLM ni de argumentos de herramientas.
-5. Empaquetar y simular requieren confirmaciones independientes. Tener un paquete no autoriza enviarlo.
+Todo campo tiene etiqueta, valor, estado, fuente, ruta del maestro, confianza, nota y equivalente fiscal cuando corresponde. Estados: `lleno`, `faltante`, `requiere_confirmacion`. CO utiliza NIT; EC/PE/PA RUC; HN RTN. Un NIT colombiano usado en un país extranjero conserva su valor, confianza 0,7 y nota «identificador extranjero». Etiquetas fiscales ambiguas requieren revisión. Un campo sin fuente queda nulo y faltante. No se actualizan fixtures desde el chat.
 
-Un paquete incompleto puede generarse como borrador para revisión, después de confirmar. La simulación se bloquea si hay campos obligatorios pendientes, tipos de soporte inexistentes, archivos faltantes o soportes vencidos. La firma permanece pendiente siempre; incluso una simulación exitosa no acredita aptitud para entrega real.
+## Documentos y preparación
 
-## Matriz de aceptación
+Excel escribe etiquetas y valores en las hojas/celdas del mapa. PDF reproduce campos en el orden dado. Portal devuelve `formato_no_soportado:true` y `valores-portal.md` para copiar manualmente. La evaluación previa de soportes es de solo lectura y no implica que un paquete exista.
 
-| Caso | Resultado histórico esperado | Comprobaciones |
+El paquete copia soportes existentes, incluidos los vencidos para revisión, y genera checklist, correo borrador y manifiesto. Los datos bancarios no se incluyen en el correo. Soportes exigidos ausentes, archivos faltantes o vencidos bloquean `listo_para_firma`; un campo faltante no lo bloquea por sí solo. Todos los campos faltantes y equivalencias a revisar aparecen en el checklist.
+
+Las exportaciones están en `out/<caso>/`. Las descargas por sesión usan copias privadas e inmutables con UUID en `out/.sesiones/` para evitar servir archivos de otra sesión. Los logs globales y por caso registran timestamp, herramienta, resultado y resumen técnico sin valores bancarios ni clave. La revalidación interna también deja registros; el chat muestra las llamadas públicas.
+
+## Confirmación
+
+1. El agente pregunta por acción, caso y artefacto.
+2. Solo una afirmación completa en el turno siguiente crea permiso de un uso.
+3. Una pregunta, rechazo, texto citado o cambio de caso cancela el permiso.
+4. El motor consume el permiso; `confirmado:true` no basta.
+5. Empaquetar y simular requieren confirmaciones independientes, conservando R4 del usuario.
+
+## Ciclo, API y consultas
+
+El ciclo usa rutas de herramientas acotadas y límite configurable de pasos por turno. La interfaz del proveedor es `LlmAdapter.enviar`; el adaptador incluido es OpenAI. Hay presupuesto por sesión, límite diario compartido por proceso, timeout y limitación de POST por IP.
+
+Las consultas usan `{status:'answered'|'not_available'|'out_of_scope',evidence_ids:number[]}`. Se exigen referencias únicas válidas y se rechaza texto libre o propiedades adicionales. Las respuestas visibles se construyen con los valores retornados por herramientas. El contexto del LLM se limita a resultados y hasta cuatro preguntas del mismo caso. La API de historial incluye mensajes de usuario y eventos; sus rutas y headers están en README.
+
+## Matriz de casos
+
+| Caso | Resultado a fecha de solicitud | Resultado hoy depende de vigencias reales del índice |
 |---|---|---|
-| co-industrias-delta | 17 campos mapeados, 4 soportes, ZIP y simulación local | Celdas y cuenta con cero inicial; plantilla reconstruida, firma pendiente |
-| ec-corp-andina | 14 campos mapeados; campo opcional desconocido vacío; simulación bloqueada | Falta certificado_cumplimiento_tributario |
-| hn-agroexport-sula | 10 campos mapeados; simulación bloqueada | Referencias comerciales no tienen fuente; país conserva CO |
-| pa-logistica-istmo | 9 campos mapeados; gestión manual | No formulario binario, no login, carga, envío ni simulación de portal |
+| CO | Excel, cuatro soportes y simulación tras confirmar. | Cámara de Comercio vencida puede bloquear firma/simulación. |
+| EC | PDF, RUC a revisar, contribuyente especial faltante, soporte tributario ausente. | Bloquea por el soporte ausente y los soportes vencidos. |
+| HN | Excel, RTN a revisar, referencias faltantes; esos campos no bloquean firma si los soportes están vigentes. | Cámara de Comercio/parafiscales vencidos bloquean. |
+| PA | Markdown copiable, RUC a revisar, sin login ni envío automático. | Gestión humana; no se inventan acciones de portal. |
 
-## Invariantes verificadas
-
-- Nunca completar un campo con datos de chat o texto libre del modelo.
-- Preservar identificaciones y cuentas como strings.
-- Validar JSON, existencia física y rutas reales dentro del directorio de fixtures.
-- Convertir fallos de plantilla, acceso o generación en resultados recuperables.
-- Aislar artefactos por sesión y caso; no permitir descargar otro UUID sin la sesión que lo generó.
-- Mantener integridad del formulario generado con SHA-256 antes de incluirlo en un paquete.
-- No enviar claves al navegador ni registrar respuestas crudas del LLM.
-- Mostrar tool calls, resultados, actividad de procesamiento y confirmaciones.
-- Ejecutar los cuatro casos y las cinco herramientas por caso sin LLM; los bloqueos esperados son resultados correctos, no pruebas omitidas.
-
-## Contrato de consultas conversacionales
-
-La intención `consulta` activa lectura y mapeo del caso actual; no genera archivos ni consume permisos. `src/agent/answers.ts` define con Zod el contrato estricto `{status: 'answered' | 'not_available' | 'out_of_scope', evidence_ids: number[]}`. Cada identificador corresponde a una etiqueta, valor y fuente derivados de resultados exitosos de las herramientas de esa sesión y caso. `answered` exige entre 1 y 20 referencias únicas existentes; los otros estados exigen una lista vacía. El servidor rechaza propiedades adicionales, texto libre e identificadores inválidos y construye la respuesta desde la evidencia. Una respuesta válida garantiza procedencia de los valores, no la pertinencia perfecta de la selección del modelo.
-
-Las consultas no modifican el maestro. Un turno de consulta cancela una pregunta de confirmación pendiente. El historial enviado al modelo se limita a cuatro preguntas del mismo caso; no proporciona valores nuevos ni autoridad. Los fallos del proveedor LLM permiten continuar con los comandos y herramientas. El indicador del frontend acredita configuración de clave, no una conexión autenticada exitosa.
+No hay fixture PE y no se añadió uno ficticio. El demo predeterminado usa fecha UTC actual y limpia `out/`; el modo histórico es explícito. La URL pública y una llamada real autenticada al LLM requieren activación externa y no se declaran completadas sin evidencia.

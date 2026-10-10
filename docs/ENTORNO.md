@@ -1,13 +1,13 @@
-# Entorno cloud reutilizable
+# Entorno cloud reproducible
 
-Usa el checkout existente `/workspace/reto1`; cada tarea cloud ya está aislada. No crees worktrees salvo petición explícita del usuario.
+Usa el checkout existente `/workspace/reto1`; cada tarea está aislada. No se necesitan worktrees.
 
-El borrador cloud guarda `install_script` para instalar con `pnpm install --frozen-lockfile` y ejecutar `pnpm run typecheck`, desde `/workspace/reto1`. El lockfile de pnpm conserva las versiones e integridad de los paquetes. La auditoría se ejecuta por separado con `pnpm audit`. El proyecto fija pnpm 11.19.0 y requiere Node 22.13+. Las carpetas de descarga y estado quedan dentro de node_modules para funcionar en el sandbox cloud.
+El borrador cloud actualizado guarda `install_script` con `pnpm install --frozen-lockfile`, `pnpm run typecheck`, `pnpm run module:check` y `pnpm run build`. Todos se ejecutaron en esta máquina. Node debe ser 22.13+; pnpm está fijado en 11.19.0. La caché/estado y store quedan dentro de node_modules, con integridad del lockfile.
 
-`start_skill` registra el arranque mediante `pnpm run dev`, los checks health/catálogo y `pnpm run check`, la diferencia entre evaluación histórica y actual y la necesidad de reiniciar procesos y sesiones en nuevas tareas. El demo y el chat por comandos funcionan sin credenciales. Bun está disponible en `node_modules/.bin`; puedes usar `pnpm exec bun run demo.ts`.
+`start_skill` registra arranque con `pnpm run dev`, verificaciones de health/catálogo y el flujo de pruebas, build, módulo y Bun. Advierte que el demo limpia `out/` y debe ejecutarse antes de arrancar un servidor cuyos documentos se quieran conservar. La fecha predeterminada es UTC actual; el histórico es explícito. Las E2E utilizan Chromium instalado y servidores propios aislados.
 
-El clasificador opcional requiere salida a `api.openai.com` y `LLM_API_KEY`. Se añadió ese dominio al borrador, conservando los presets, y se declaró una credencial personal opcional sin valor. Configura la clave de forma segura en ajustes del entorno o en `.env` local; no la escribas en el repositorio ni en chat.
+La clave opcional `LLM_API_KEY` ya está declarada para `api.openai.com`; no se duplicó la declaración ni se introdujo un valor. No había una vinculación guardada ni una clave en el proceso. Los comandos funcionan sin ella; las preguntas naturales requieren una clave de API propia y conexión real. La presencia de `configured:true` no prueba autenticación.
 
-El guardado del borrador fue confirmado. Para reutilizar el snapshot en nuevas tareas, revisa y guarda los cambios en ajustes del entorno y publica el entorno desde la interfaz del producto. Guardar instrucciones no las ejecuta, no aplica la red a la instancia actual ni demuestra una restauración en una tarea nueva. GitHub contiene código y documentación; no contiene el snapshot, las sesiones, .env, node_modules o outputs.
+Guardar el borrador no ejecuta instrucciones, no aplica cambios de red ni publica un snapshot. El usuario puede revisar/publicar desde ajustes del entorno. Las sesiones y procesos no sobreviven a nuevas máquinas; deben reiniciarse. `.env`, node_modules, documentos y sesiones no van al repositorio.
 
-Para ejecutar E2E en este entorno usa `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e`. Playwright inicia y detiene sus servidores y limpia los fixtures temporales. Para todos los checks usa esa misma variable con `pnpm run check:all`. En una máquina sin Chromium instalado, instala primero el navegador con `pnpm exec playwright install --with-deps chromium`; las descargas pueden necesitar permitir los dominios oficiales de Playwright. La configuración CI realiza ese paso.
+El contenedor Docker se compiló usando los secretos temporales de proxy/CA del entorno y resolución de host del proxy para el constructor. No se copian secretos al repo/imagen ni se deshabilitan verificaciones. Esta configuración específica de red no se guarda como dato del aplicativo. El deploy público y la clave real se activan en la cuenta del proveedor según `DESPLIEGUE.md`.

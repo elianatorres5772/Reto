@@ -9,6 +9,14 @@ import { caseId, artifactId } from '../contracts/proveedor.js';
 const sessions=new Map<string,{session:ReturnType<typeof createSession>;accessed:number}>();
 const catalog=createProveedorTools();
 const MAX_SESSIONS=100;
+const originAllowed=(req:IncomingMessage)=>{
+ const origin=req.headers.origin;
+ const allowed=process.env.PUBLIC_ORIGIN;
+ return (!origin||origin===`http://${req.headers.host}`||origin===`https://${req.headers.host}`||origin===allowed)&&req.headers['sec-fetch-site']!=='cross-site';
+};
+const requests=new Map<string,{minute:number;count:number}>();
+function rateAllowed(req:IncomingMessage){const ip=req.socket.remoteAddress??'unknown',minute=Math.floor(Date.now()/60000);for(const [key,row] of requests)if(row.minute!==minute)requests.delete(key);const row=requests.get(ip)??{minute,count:0};row.count++;requests.set(ip,row);return row.count<=(z.coerce.number().int().min(1).max(10000).safeParse(process.env.CHAT_RATE_LIMIT).data??120);}
+
 const TTL=60*60*1000;
 function scrub(value:string) {const key=process.env.LLM_API_KEY;return key?value.split(key).join('[REDACTED]'):value;}
 function json(res:ServerResponse,status:number,data:unknown) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(scrub(JSON.stringify(data)));}
@@ -31,20 +39,26 @@ export const server=createServer(async(req,res)=>{
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   try {
     // Sin CORS. Impide uso desde sitios externos y peticiones de navegador de otro origen.
-    const origin=req.headers.origin;
-    if((origin && origin!==`http://${req.headers.host}`) || req.headers['sec-fetch-site']==='cross-site') {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
+    if(!originAllowed(req)) {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
+    if(req.method==='POST'&&!rateAllowed(req)){json(res,429,{ok:false,error:'Demasiadas solicitudes. Espera un minuto.'});return;}
     const url=new URL(req.url??'/','http://localhost');
     if(req.method==='GET' && ['/','/chat.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
       res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
     }
-    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic'});return;}
+    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:process.env.LLM_PROVIDER??'openai',model:process.env.LLM_MODEL??'gpt-4.1-mini',configured:!!process.env.LLM_API_KEY});return;}
     if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);
       if(sessions.size>=MAX_SESSIONS){json(res,503,{ok:false,error:'Capacidad temporal agotada.'});return;}
-      const id=randomUUID();sessions.set(id,{session:createSession(),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+      const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+    }
+    if(req.method==='GET' && url.pathname.startsWith('/api/sessions/')) {
+      const session=authorized(req);
+      const id=url.pathname.slice('/api/sessions/'.length);
+      if(!session || id!==session.sessionId){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      json(res,200,{ok:true,sessionId:id,history:session.history});return;
     }
     if(req.method==='POST' && url.pathname==='/api/chat') {
       const session=authorized(req);if(!session){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}

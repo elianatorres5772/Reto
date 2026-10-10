@@ -1,0 +1,12 @@
+services:
+  proveedor:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+    volumes:
+      - documentos:/app/out
+volumes:
+  documentos:

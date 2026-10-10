@@ -15,8 +15,8 @@ test('CO: preparación, dos confirmaciones, XLSX y ZIP descargables, simulación
   const form=await toolResult(page,'proveedor_generar_formulario');expect(form.ok).toBe(true);if(!form.ok)return;
   expect(form.data.firma).toBe('pendiente');
   const formCard=toolCard(page,'proveedor_generar_formulario');await formCard.locator('summary').click();
-  const xlsxPromise=page.waitForEvent('download');await formCard.getByRole('button',{name:'Descargar formulario-borrador.xlsx'}).click();
-  const xlsx=await xlsxPromise;expect(xlsx.suggestedFilename()).toBe('formulario-borrador.xlsx');const xlsxBytes=await downloadBytes(xlsx);
+  const xlsxPromise=page.waitForEvent('download');await formCard.getByRole('button',{name:'Descargar formulario.xlsx'}).click();
+  const xlsx=await xlsxPromise;expect(xlsx.suggestedFilename()).toBe('formulario.xlsx');const xlsxBytes=await downloadBytes(xlsx);
   expect(createHash('sha256').update(xlsxBytes).digest('hex')).toBe(form.data.artefacto.sha256);
   const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(xlsxBytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   expect(workbook.getWorksheet('Datos Bancarios')?.getCell('C5').value).toBe('03100012345');
@@ -26,7 +26,7 @@ test('CO: preparación, dos confirmaciones, XLSX y ZIP descargables, simulación
   const pkgCard=toolCard(page,'proveedor_armar_paquete');await pkgCard.locator('summary').click();
   const zipPromise=page.waitForEvent('download');await pkgCard.getByRole('button',{name:'Descargar paquete-borrador.zip'}).click();
   const zipBytes=await downloadBytes(await zipPromise);expect(createHash('sha256').update(zipBytes).digest('hex')).toBe(pkg.data.paquete.sha256);
-  const files=unzipSync(zipBytes);expect(Object.keys(files)).toHaveLength(6);expect(files['formulario-borrador.xlsx']).toBeDefined();
+  const files=unzipSync(zipBytes);expect(Object.keys(files)).toHaveLength(8);expect(files['formulario.xlsx']).toBeDefined();
   expect(JSON.parse(strFromU8(files['manifiesto.json']!)).firma).toBe('pendiente');
   await turn(page,()=>page.getByRole('button',{name:'Simular envío',exact:true}).click());
   await expect(page.locator('#question')).toContainText('simulación local');await expect(page.locator('summary').filter({hasText:'proveedor_simular_envio'})).toHaveCount(0);
@@ -49,25 +49,25 @@ for(const variant of ['rechazo','turno intermedio','sí citado','cambio de caso'
 }
 
 test('Confirmación consumida no se reutiliza en el siguiente turno',async({page})=>{
-  await openChat(page);await selectCase(page,co);await command(page,'preparar');await command(page,'sí');await command(page,'sí');
+  await openChat(page);await selectCase(page,co);await command(page,'preparar');await command(page,'sí');await command(page,'no');await command(page,'sí');
   await expect(page.locator('summary').filter({hasText:'proveedor_armar_paquete'})).toHaveCount(1);
   await expect(page.locator('summary').filter({hasText:'proveedor_simular_envio'})).toHaveCount(0);
 });
 
 for(const id of [ec,hn]) {
-  test(`${id}: datos desconocidos permanecen pendientes y bloquean la simulación`,async({page})=>{
+  test(`${id}: datos desconocidos permanecen pendientes; solo soportes bloquean firma`,async({page})=>{
     await openChat(page);await selectCase(page,id);await command(page,'preparar');
     const mapped=await toolResult(page,'proveedor_mapear_campos');expect(mapped.ok).toBe(true);if(!mapped.ok)return;
     const unknown=id===ec?'Número de contribuyente especial':'Referencias comerciales';
     expect(mapped.data.campos.find(f=>f.etiqueta===unknown)?.valor).toBeNull();
     if(id===ec) {
       const card=toolCard(page,'proveedor_generar_formulario');await card.locator('summary').click();
-      const promise=page.waitForEvent('download');await card.getByRole('button',{name:'Descargar formulario-borrador.pdf'}).click();
+      const promise=page.waitForEvent('download');await card.getByRole('button',{name:'Descargar formulario.pdf'}).click();
       const bytes=await downloadBytes(await promise);expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(0);
     }
     await command(page,'sí');const pkg=await toolResult(page,'proveedor_armar_paquete');expect(pkg.ok).toBe(true);
-    if(pkg.ok){expect(pkg.data.listo_para_simular).toBe(false);if(id===ec)expect(pkg.data.soportes_faltantes).toContain('certificado_cumplimiento_tributario');else expect(pkg.data.campos_faltantes).toContain('Referencias comerciales');}
-    await command(page,'simular');await command(page,'sí');const sent=await toolResult(page,'proveedor_simular_envio');expect(sent.ok).toBe(false);if(!sent.ok)expect(sent.error.code).toBe('INCOMPLETE');
+    if(pkg.ok){expect(pkg.data.listo_para_simular).toBe(id===hn);expect(pkg.data.listo_para_firma).toBe(id===hn);if(id===ec)expect(pkg.data.soportes_faltantes).toContain('certificado_cumplimiento_tributario');else expect(pkg.data.campos_faltantes).toContain('Referencias comerciales');}
+    await command(page,'simular');await command(page,'sí');const sent=await toolResult(page,'proveedor_simular_envio');expect(sent.ok).toBe(id===hn);if(!sent.ok)expect(sent.error.code).toBe('INCOMPLETE');
     await command(page,'leer');const read=await toolResult(page,'proveedor_leer_solicitud');expect(read.ok).toBe(true);
   });
 }
@@ -80,12 +80,14 @@ test('Fixtures originales: fecha actual bloquea soportes vencidos',async({page})
   await command(page,'simular');await command(page,'sí');const sent=await toolResult(page,'proveedor_simular_envio');expect(sent.ok).toBe(false);if(!sent.ok)expect(sent.error.code).toBe('INCOMPLETE');
 });
 
-test('PA: gestión manual del portal, sin archivos ni llamadas externas',async({page})=>{
+test('PA: valores copiables del portal, sin acceso ni envío externo',async({page})=>{
   await openChat(page);await selectCase(page,'pa-logistica-istmo');await command(page,'preparar');
   await expect(page.locator('#history')).toContainText('gestiona el registro manualmente');
   await expect(page.locator('#confirmation')).toBeHidden();
-  await expect(page.locator('summary').filter({hasText:'proveedor_generar_formulario'})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:/Descargar/})).toHaveCount(0);
+  await expect(page.locator('summary').filter({hasText:'proveedor_generar_formulario'})).toHaveCount(1);
+  const portal=toolCard(page,'proveedor_generar_formulario');await portal.locator('summary').click();
+  const promise=page.waitForEvent('download');await portal.getByRole('button',{name:'Descargar valores-portal.md'}).click();
+  expect(new TextDecoder().decode(await downloadBytes(await promise))).toContain('Formato no soportado');
   await command(page,'simular');await expect(page.locator('summary').filter({hasText:'proveedor_simular_envio'})).toHaveCount(0);
 });
 

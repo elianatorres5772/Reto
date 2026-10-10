@@ -17,6 +17,7 @@
     "src/**/*.ts",
     "tests/**/*.ts",
     "demo.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "scripts/**/*.ts"
   ]
 }

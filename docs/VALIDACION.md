@@ -1,26 +1,33 @@
-# Validación ejecutada
+# Validación de la actualización al PRD completo
 
-| Verificación | Resultado observado |
+Resultados ejecutados sobre el código de esta entrega; los bloqueos esperados no son pruebas fallidas.
+
+| Verificación | Resultado |
 |---|---|
-| Instalación reproducible | pnpm install --frozen-lockfile con pnpm-lock.yaml y caché dentro de node_modules completado |
-| TypeScript estricto | pnpm run typecheck: sin errores |
-| Suite automatizada | 20 pruebas pasadas; 0 fallidas, canceladas u omitidas |
-| Demo Node | 4 casos; cinco herramientas ejecutadas por caso; bloqueos esperados verificados |
-| Demo Bun | bun run demo.ts completado sin clave LLM |
-| HTTP funcional | Inicio de servidor, preparación, confirmación, ZIP, descarga aislada, entrada inválida y origen externo verificados |
-| Servidor actual | pnpm run dev iniciado; health ok y catálogo con cuatro casos |
-| Auditoría pnpm | 0 vulnerabilidades después del override de uuid |
-| Adjuntos originales | 21 archivos comparados byte a byte con las descargas: iguales |
-| Frontend E2E | 18 escenarios Playwright aprobados en Chromium real headless; 0 fallidos u omitidos |
+| Instalación reproducible | `pnpm install --frozen-lockfile` completado. |
+| TypeScript estricto | `pnpm run typecheck` sin errores; código TypeScript sin `any`. |
+| Sincronización del módulo | `pnpm run module:check` aprobado. |
+| Suite interna | **25 pruebas aprobadas**, sin fallidas, canceladas u omitidas. |
+| E2E Chromium | **19 escenarios aprobados**, sin fallidos u omitidos; backend real y OpenAI simulado para lenguaje natural. |
+| Demo Node | Cuatro casos, cinco herramientas públicas por caso, sin clave LLM. |
+| Demo Bun | `pnpm exec bun run demo.ts` completado sin clave. |
+| Demo histórico | `pnpm run demo:historico` completado con fecha de solicitud explícita. |
+| Determinismo del resumen | Dos ejecuciones consecutivas de `tsx demo.ts` comparadas con `cmp`: idénticas. Cada demo limpia `out/`. |
+| Build | `pnpm run build` completado; assets y conocimiento presentes. |
+| Servidor compilado | `node dist/server/index.js`: health, imagen, chat, portal y descarga verificados. |
+| Auditoría de dependencias de producción | `pnpm audit --prod`: sin vulnerabilidades conocidas. |
+| Docker build | Imagen `reto1-proveedor:prd` compilada desde Dockerfile, con dependencias congeladas y verificadas. |
+| Docker runtime | Inicio, chat, confirmación, paquete, descarga e historial verificados por HTTP; ejecuta como UID 1000. |
+| Fixtures | Ningún archivo versionado de fixtures fue modificado; estructura `repositorio/` y regla PE probadas en copias temporales. |
 
-La suite HTTP inicia y detiene su propio servidor. Los errores esperados (INCOMPLETE y PORTAL_MANUAL) son comportamientos verificados, no pruebas fallidas ni omitidas.
+La suite interna verifica la forma pública del PRD, descripciones de argumentos, mapeos manipulados, permisos falsos, reglas tributarias, generación de archivos, correo sin cuenta bancaria, auditoría global/por caso, RN3, presupuestos de sesión y servidor incluso al crear otra sesión, límite de turno y timeout. HTTP valida historial completo y rechazo entre sesiones; E2E añade el prompt de defensa y selección de caso nombrado.
 
-Se ejecutaron pruebas automatizadas en Chromium real; no se realizó revisión visual manual ni una llamada real autenticada a OpenAI. El adaptador LLM se verificó con respuestas controladas. La consulta de conectividad a api.openai.com recibió rechazo del proxy antes del cambio de configuración; el dominio y una credencial personal opcional se añadieron al borrador cloud. Guardar ese borrador no modifica ni publica por sí solo la instancia actual. El modo sin LLM está validado y funciona.
+Los E2E originales mantienen los soportes y fechas. Los servidores preparados extienden fechas solo en copias temporales para el camino exitoso. En la fecha UTC de ejecución, la Cámara de Comercio/parafiscales originales están vencidos; bloquear `listo_para_firma` y simulación es el comportamiento correcto. Una referencia comercial faltante por sí sola no bloquea ese estado.
 
-La evaluación histórica del demo permite verificar el caso CO con soportes vigentes a la fecha de solicitud. La UI usa fecha actual UTC; los soportes expirados bloquean simulación. No se validó firma, envío real ni registro en un portal porque estas operaciones no forman parte del aplicativo de demostración.
+El primer build Docker falló por DNS de npm en el constructor; la resolución se obtuvo usando el proxy y CA disponibles mediante secretos temporales BuildKit y una entrada de host del entorno para el proxy. No se desactivaron TLS, checksums ni políticas de integridad. Se corrigió además la lectura de archivos estáticos/configuración para el usuario no privilegiado y se repitió el flujo dentro del contenedor. Es una configuración de esta máquina; no se incorpora la IP del proxy ni sus valores al repositorio o imagen. El Dockerfile admite esos secretos opcionalmente y funciona con red normal sin ellos.
 
-Las E2E usan el backend HTTP real en copias temporales de los fixtures. Ver [tests/e2e/README.md](../tests/e2e/README.md) para datos sintéticos, puertos, cobertura y comando de ejecución. Se ejecutaron con `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e` porque la descarga del browser Playwright fue rechazada por la política de red. Esto no modifica la validación ni omite escenarios: se usó Chromium instalado en el entorno. CI configura la instalación del browser Playwright; su ejecución remota no se afirma aquí.
+No había `LLM_API_KEY` real disponible ni una vinculación guardada. No se afirma una llamada real autenticada a OpenAI ni una URL pública activa. La aplicación debe activarse en una cuenta de hosting y probar una consulta con la clave propia, según `DESPLIEGUE.md` y `../README_LLM.md`.
 
-La migración a pnpm 11.19.0 fue verificada mediante instalación con lockfile congelado, `pnpm audit` y `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all`. Node.js debe ser 22.13 o superior. El lockfile de npm fue sustituido por pnpm-lock.yaml; el override de uuid y los permisos de scripts de instalación están en pnpm-workspace.yaml.
+El build Docker no prueba el arranque completo en menos de dos minutos en una máquina limpia. Las pruebas se hicieron en Chromium de escritorio; no se afirma cobertura Firefox/WebKit ni auditoría exhaustiva de accesibilidad. Firma, correo real y automatización de portal están fuera del alcance.
 
-Actualización de consultas LLM: verificados contratos de evidencia, referencias inventadas, ausencia de clave, fallo HTTP, aislamiento por caso y cancelación de confirmación. Las pruebas de navegador incluyen el flujo de consulta con OpenAI simulado en backend. No había una clave real disponible en este entorno: no se afirma una llamada autenticada a OpenAI. La guía de activación está en [README_LLM.md](../README_LLM.md).
+Las instrucciones cloud se guardan como borrador (`install_script` y `start_skill`), no como una publicación automática del entorno. Las dependencias y procesos existentes de esta máquina no garantizan procesos vivos en una restauración posterior.
