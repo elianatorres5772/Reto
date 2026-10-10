@@ -10,10 +10,11 @@ Si trabajas en el entorno cloud de este proyecto, las herramientas y el proyecto
 
 Si trabajas en tu computador:
 
-1. Instala **Node.js 22 o una versión LTS más reciente** desde https://nodejs.org. Node.js permite ejecutar el aplicativo; su instalador también incluye npm, que descarga las herramientas necesarias.
-2. Descarga el proyecto desde https://github.com/elianatorres5772/reto1: pulsa **Code**, después **Download ZIP** y extrae el ZIP. También puedes usar la carpeta del proyecto si ya la tienes.
-3. Abre la carpeta que contiene `package.json`, `README.md` y `src`. Si descargaste el ZIP, normalmente se llama `reto1-main`.
-4. Abre una **terminal** en esa carpeta. La terminal es una ventana para escribir comandos. En Windows puedes hacer clic derecho dentro de la carpeta y seleccionar **Abrir en Terminal**. Otra opción, en cualquier sistema, es abrir esa carpeta con Visual Studio Code y elegir **Terminal → Nueva terminal**.
+1. Instala **Node.js 22.13 o superior** desde https://nodejs.org. Node.js permite ejecutar el aplicativo; su instalador incluye npm, que usaremos una sola vez para instalar pnpm. pnpm será la herramienta para los demás comandos.
+2. Abre una terminal y ejecuta `npm install --global pnpm@11.19.0` para instalar pnpm. Es el único paso que utiliza npm. Si pide permisos de administrador y no los tienes, solicita ayuda a quien administre el equipo.
+3. Descarga el proyecto desde https://github.com/elianatorres5772/reto1: pulsa **Code**, después **Download ZIP** y extrae el ZIP. También puedes usar la carpeta del proyecto si ya la tienes.
+4. Abre la carpeta que contiene `package.json`, `README.md` y `src`. Si descargaste el ZIP, normalmente se llama `reto1-main`.
+5. Abre una **terminal** en esa carpeta. La terminal es una ventana para escribir comandos. En Windows puedes hacer clic derecho dentro de la carpeta y seleccionar **Abrir en Terminal**. Otra opción, en cualquier sistema, es abrir esa carpeta con Visual Studio Code y elegir **Terminal → Nueva terminal**.
 
 Copia un comando a la vez, pégalo en la terminal y pulsa **Enter**. Espera a que termine antes de ejecutar el siguiente. No copies los símbolos de los recuadros ni los mensajes de resultado.
 
@@ -27,42 +28,42 @@ cd /workspace/reto1
 
 En tu computador, si abriste la terminal dentro de la carpeta del proyecto, ya estás en el lugar correcto y no necesitas ese comando. La ruta `/workspace/reto1` corresponde al entorno cloud, no a tu computador.
 
-Para comprobar que Node.js y npm están disponibles, ejecuta estos comandos por separado:
+Para comprobar que Node.js y pnpm están disponibles, ejecuta estos comandos por separado:
 
 ```bash
 node --version
 ```
 
 ```bash
-npm --version
+pnpm --version
 ```
 
-**Qué debes ver:** un número de versión después de cada comando. Node.js debe ser versión 20 o superior; recomendamos 22 o una LTS posterior. Si aparece «comando no encontrado» o «no se reconoce», instala Node.js y cierra y vuelve a abrir la terminal.
+**Qué debes ver:** un número de versión después de cada comando. Node.js debe ser versión 22.13 o superior y pnpm debe mostrar 11.19.0. Si aparece «comando no encontrado» o «no se reconoce», instala Node.js y pnpm como indica el paso 1, y cierra y vuelve a abrir la terminal.
 
 ## 3. Instalar las herramientas del proyecto
 
 En tu computador ejecuta:
 
 ```bash
-npm ci
+pnpm install --frozen-lockfile
 ```
 
-En el entorno cloud usa esta variante, que guarda las descargas en una carpeta permitida:
+En el entorno cloud se utiliza el mismo comando. El proyecto guarda las descargas dentro de `node_modules/`, una carpeta permitida:
 
 ```bash
-npm ci --cache /tmp/reto1-npm-cache
+pnpm install --frozen-lockfile
 ```
 
 **Qué hace:** descarga las herramientas que necesita el aplicativo, con las versiones registradas en el proyecto. Requiere acceso a Internet y puede tardar unos minutos. Ejecútalo la primera vez y después de recibir cambios en las dependencias; no hace falta hacerlo cada vez que abras el chat.
 
-**Cómo saber que terminó:** vuelve a aparecer la línea donde puedes escribir un comando. Los avisos que empiezan por `npm warn` no significan necesariamente que la instalación falló. Si aparece `npm error`, revisa la sección de problemas frecuentes antes de continuar.
+**Cómo saber que terminó:** vuelve a aparecer la línea donde puedes escribir un comando. Los avisos que empiezan por `WARN` no significan necesariamente que la instalación falló. Si aparece `ERR_PNPM`, revisa la sección de problemas frecuentes antes de continuar.
 
 ## 4. Iniciar y usar el chat
 
 Ejecuta:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 **Qué debes ver:** `Servidor iniciado en puerto 3000.`
@@ -94,7 +95,7 @@ Si dejaste el chat abierto, abre una **segunda terminal** dentro de la misma car
 ### Ejecutar la demostración de los cuatro casos
 
 ```bash
-npm run demo
+pnpm run demo
 ```
 
 **Qué hace:** ejecuta directamente las cinco herramientas para cada caso, sin necesitar una clave de inteligencia artificial.
@@ -106,7 +107,7 @@ La demostración evalúa los soportes a la fecha original de cada solicitud. El 
 ### Ejecutar las pruebas del funcionamiento interno
 
 ```bash
-npm test
+pnpm test
 ```
 
 **Qué hace:** comprueba datos, documentos, permisos, errores y comunicación con el servidor.
@@ -116,7 +117,7 @@ npm test
 ### Comprobar el código, las pruebas y la demostración juntos
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 **Qué hace:** realiza las tres comprobaciones en orden. Si alguna falla, detiene las siguientes y muestra el error.
@@ -130,13 +131,13 @@ Estas pruebas, llamadas **E2E**, abren un navegador automáticamente y usan el c
 En Windows o macOS:
 
 ```bash
-npx playwright install chromium
+pnpm exec playwright install chromium
 ```
 
 En Linux:
 
 ```bash
-npx playwright install --with-deps chromium
+pnpm exec playwright install --with-deps chromium
 ```
 
 **Qué hace:** instala el navegador de las pruebas. La variante de Linux también instala componentes del sistema y puede pedir la contraseña de administrador. Necesita Internet. Si no tienes permisos, solicita ayuda a quien administre el equipo.
@@ -144,7 +145,7 @@ npx playwright install --with-deps chromium
 Después ejecuta:
 
 ```bash
-npm run test:e2e
+pnpm run test:e2e
 ```
 
 ### En este entorno cloud: usar el navegador que ya está instalado
@@ -152,7 +153,7 @@ npm run test:e2e
 No necesitas descargarlo. Ejecuta:
 
 ```bash
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 ```
 
 Este comando es específico de Linux y de este entorno; no lo copies en una terminal de Windows.
@@ -166,7 +167,7 @@ Las pruebas trabajan con copias temporales de los datos. No cambian las solicitu
 En tu computador ejecuta:
 
 ```bash
-npm run test:e2e:report
+pnpm run test:e2e:report
 ```
 
 Abre el informe en el navegador o usa la dirección que indique la terminal. Permite revisar qué se probó y los detalles de los fallos. Para cerrar el visor, pulsa **Ctrl + C** en esa terminal.
@@ -180,25 +181,25 @@ Después de completar la instalación y preparar el navegador de pruebas, ejecut
 **En tu computador:**
 
 ```bash
-npm run check:all
+pnpm run check:all
 ```
 
 **En este entorno cloud:**
 
 ```bash
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run check:all
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all
 ```
 
 Comprueba el código TypeScript, las 17 pruebas internas, la demostración y los 15 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
 
 ## 8. Detener y volver a iniciar el aplicativo
 
-Para detener el chat, vuelve a la terminal donde ejecutaste `npm run dev` y pulsa **Ctrl + C**. No escribas esas palabras como un comando: mantén presionada la tecla Ctrl y pulsa C.
+Para detener el chat, vuelve a la terminal donde ejecutaste `pnpm run dev` y pulsa **Ctrl + C**. No escribas esas palabras como un comando: mantén presionada la tecla Ctrl y pulsa C.
 
 Para volver a iniciarlo, desde la carpeta del proyecto ejecuta otra vez:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Al reiniciar el servidor o recargar la página se inicia una sesión nueva. Descarga los documentos que quieras conservar antes de cerrar tu sesión. Los archivos generados se guardan en `outputs/`; no se suben a GitHub.
@@ -207,9 +208,9 @@ Al reiniciar el servidor o recargar la página se inicia una sesión nueva. Desc
 
 | Mensaje o situación | Qué hacer |
 |---|---|
-| No se reconoce `node` o `npm` | Instala Node.js y vuelve a abrir la terminal. |
+| No se reconoce `node` o `pnpm` | Instala Node.js y pnpm según el paso 1 y vuelve a abrir la terminal. |
 | No encuentra `package.json` | Abre la terminal dentro de la carpeta del proyecto, no dentro de `src` ni en la carpeta del ZIP sin extraer. |
-| PowerShell bloquea `npm.ps1` | En Windows, prueba `npm.cmd` en lugar de `npm`, y `npx.cmd` en lugar de `npx`. Por ejemplo: `npm.cmd run dev`. |
+| PowerShell bloquea `pnpm.ps1` | En Windows, prueba `pnpm.cmd` en lugar de `pnpm`. Por ejemplo: `pnpm.cmd run dev`. Para la instalación inicial de pnpm puedes usar `npm.cmd install --global pnpm@11.19.0`. |
 | Falló una descarga o aparece `Domain forbidden` | Revisa la conexión o la política de red. Para E2E en este cloud utiliza el Chromium ya instalado, como indica el paso 6. |
 | «Executable doesn't exist» al probar el navegador | Instala Chromium con el comando del paso 6 o usa la variante cloud si estás en este entorno. |
 | El puerto 3000 está ocupado o aparece `EADDRINUSE` | Puede que el chat ya esté abierto. Usa esa instancia o detén tu ejecución anterior con Ctrl + C antes de iniciar otra. No cierres procesos que no reconozcas. |
@@ -228,15 +229,15 @@ Si quieres que el chat reconozca solicitudes escritas con otras palabras, pide a
 
 | Lo que quieres hacer | Comando desde la carpeta del proyecto |
 |---|---|
-| Iniciar el chat | `npm run dev` |
+| Iniciar el chat | `pnpm run dev` |
 | Detener el chat | Ctrl + C en su terminal |
-| Ejecutar la demostración | `npm run demo` |
-| Ejecutar pruebas internas | `npm test` |
-| Comprobar código, pruebas y demo | `npm run check` |
-| Ejecutar pruebas con navegador en tu computador | `npm run test:e2e` |
-| Ejecutar pruebas con navegador en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e` |
-| Ejecutar todas las comprobaciones en tu computador | `npm run check:all` |
-| Ejecutar todas las comprobaciones en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run check:all` |
-| Ver el informe E2E en tu computador | `npm run test:e2e:report` |
+| Ejecutar la demostración | `pnpm run demo` |
+| Ejecutar pruebas internas | `pnpm test` |
+| Comprobar código, pruebas y demo | `pnpm run check` |
+| Ejecutar pruebas con navegador en tu computador | `pnpm run test:e2e` |
+| Ejecutar pruebas con navegador en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e` |
+| Ejecutar todas las comprobaciones en tu computador | `pnpm run check:all` |
+| Ejecutar todas las comprobaciones en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all` |
+| Ver el informe E2E en tu computador | `pnpm run test:e2e:report` |
 
-Para el primer uso, sigue los pasos en orden. En usos posteriores, normalmente basta con abrir la carpeta, ejecutar `npm run dev` y abrir el chat.
+Para el primer uso, sigue los pasos en orden. En usos posteriores, normalmente basta con abrir la carpeta, ejecutar `pnpm run dev` y abrir el chat.

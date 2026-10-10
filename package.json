@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "tsx src/server/index.ts",
@@ -12,11 +12,11 @@
     "demo": "tsx demo.ts",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run demo",
+    "check": "pnpm run typecheck && pnpm test && pnpm run demo",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "check:all": "npm run check && npm run test:e2e"
+    "check:all": "pnpm run check && pnpm run test:e2e"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
@@ -32,9 +32,5 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   },
-  "overrides": {
-    "exceljs": {
-      "uuid": "11.1.1"
-    }
-  }
+  "packageManager": "pnpm@11.19.0"
 }

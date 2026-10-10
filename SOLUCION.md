@@ -2,7 +2,7 @@
 
 ## Resultado y alcance de la evidencia
 
-El repositorio se creó desde cero sobre los requisitos R1–R5 y 21 adjuntos. Incluye TypeScript sobre Node 20+, contratos Zod, las cinco herramientas requeridas, un chat con eventos incrementales, prompt independiente, un demo sin LLM y pruebas de integración.
+El repositorio se creó desde cero sobre los requisitos R1–R5 y 21 adjuntos. Incluye TypeScript sobre Node 22.13+ y pnpm 11.19.0, contratos Zod, las cinco herramientas requeridas, un chat con eventos incrementales, prompt independiente, un demo sin LLM y pruebas de integración.
 
 No se adjuntó el PRD completo ni los XLSX/PDF originales. Por ello, se explicitan las decisiones en `docs/ESPECIFICACION.md`; no se atribuyen reglas a una sección no disponible. La agrupación de archivos con nombres repetidos está registrada en `fixtures/reto-01/origen.json` y se infirió del país, formato, etiquetas y soportes. Ningún dato original fue completado o alterado.
 
@@ -79,7 +79,7 @@ La auditoría inicial detectó GHSA-w5hq-g745-h8pq en uuid transitivo de ExcelJS
 
 ## Verificación y resultados esperados
 
-`npm run check` ejecuta TypeScript, pruebas y demo. `bun run demo.ts` funciona sin clave; también se ofrece Bun local mediante `npm exec -- bun run demo.ts`. CI instala con `npm ci`, utiliza Node 22 y ejecuta las mismas comprobaciones.
+`pnpm run check` ejecuta TypeScript, pruebas y demo. `bun run demo.ts` funciona sin clave; también se ofrece Bun local mediante `pnpm exec bun run demo.ts`. CI instala con `pnpm install --frozen-lockfile`, utiliza Node 22 y ejecuta las mismas comprobaciones.
 
 Las pruebas cubren contratos estrictos; traversal y symlinks; JSON corrupto y plantillas inválidas; datos y procedencia; lectura de los XLSX/PDF generados; contenido del ZIP; soportes inexistentes y vencidos; confirmación por turno y consumo; separación de casos y sesiones; LLM inválido y errores sin secretos; inicio HTTP, eventos, descargas, rechazo de origen y continuidad después de errores.
 
@@ -104,4 +104,4 @@ El detalle de resultados ejecutados está en [docs/VALIDACION.md](docs/VALIDACIO
 
 La suite en `tests/e2e/` añade Playwright con Chromium real: UI, confirmaciones inmediatas, bloqueo de permisos reutilizados, generación y descarga de XLSX/PDF/ZIP, pendientes por caso, vigencias, portal manual, recuperación de errores, XSS y aislamiento de descargas. La fuente de resultados sigue siendo el servidor y las herramientas reales. El estado de procesamiento se observa reteniendo una petición antes de continuarla; la recuperación de conexión se prueba con un aborto único.
 
-Dos servidores de prueba utilizan copias temporales: una original y otra con vigencias sintéticas para el camino exitoso. No se alteran los fixtures versionados ni se cambia el reloj de la aplicación. Las sesiones y los outputs de la suite se aíslan de la instancia de desarrollo. `npm run test:e2e` ejecuta la suite; `npm run check:all` incluye las comprobaciones anteriores. CI instala Chromium y conserva reportes y trazas de fallos. El detalle está en [tests/e2e/README.md](tests/e2e/README.md).
+Dos servidores de prueba utilizan copias temporales: una original y otra con vigencias sintéticas para el camino exitoso. No se alteran los fixtures versionados ni se cambia el reloj de la aplicación. Las sesiones y los outputs de la suite se aíslan de la instancia de desarrollo. `pnpm run test:e2e` ejecuta la suite; `pnpm run check:all` incluye las comprobaciones anteriores. CI instala Chromium y conserva reportes y trazas de fallos. El detalle está en [tests/e2e/README.md](tests/e2e/README.md).

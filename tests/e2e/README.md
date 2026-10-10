@@ -5,18 +5,18 @@ Playwright controla Chromium headless y usa la aplicación HTTP real. Los escena
 ## Ejecutar
 
 ```sh
-npm ci --cache /tmp/reto1-npm-cache
-npx playwright install --with-deps chromium
-npm run test:e2e
+pnpm install --frozen-lockfile
+pnpm exec playwright install --with-deps chromium
+pnpm run test:e2e
 ```
 
 Si el entorno ya tiene Chromium y las descargas están restringidas:
 
 ```sh
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 ```
 
-`npm run check:all` ejecuta las verificaciones existentes y las E2E. La variable de navegador también aplica a ese comando. `npm run test:e2e:ui` abre el runner interactivo cuando hay un entorno gráfico; `npm run test:e2e:report` abre el reporte HTML. Los fallos conservan trazas y screenshots. Los reportes, descargas y resultados no se versionan. CI instala el Chromium compatible con la versión de Playwright fijada en el lockfile y publica los reportes por siete días.
+`pnpm run check:all` ejecuta las verificaciones existentes y las E2E. La variable de navegador también aplica a ese comando. `pnpm run test:e2e:ui` abre el runner interactivo cuando hay un entorno gráfico; `pnpm run test:e2e:report` abre el reporte HTML. Los fallos conservan trazas y screenshots. Los reportes, descargas y resultados no se versionan. CI instala el Chromium compatible con la versión de Playwright fijada en el lockfile y publica los reportes por siete días.
 
 ## Aislamiento y datos de prueba
 

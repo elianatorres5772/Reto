@@ -49,4 +49,4 @@ async function demo() {
   }
   console.log(JSON.stringify({modo:'Sin LLM; evaluación histórica reproducible a la fecha de cada solicitud, no acredita vigencia actual.',casos_ejecutados:reports.length,herramientas_por_caso:5,resultados:reports},null,2));
 }
-demo().catch(()=>{console.error('Demo fallido: los resultados no cumplen las expectativas de los fixtures. Ejecuta npm test para el diagnóstico.');process.exitCode=1;});
+demo().catch(()=>{console.error('Demo fallido: los resultados no cumplen las expectativas de los fixtures. Ejecuta pnpm test para el diagnóstico.');process.exitCode=1;});
