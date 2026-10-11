@@ -10,7 +10,7 @@ Si trabajas en el entorno cloud de este proyecto, las herramientas y el proyecto
 
 Si trabajas en tu computador:
 
-1. Instala **Node.js 24.15 o superior de la rama 24 (Node 24 LTS)** desde https://nodejs.org. Node.js permite ejecutar el aplicativo; su instalador incluye npm, que usaremos una sola vez para instalar pnpm. pnpm será la herramienta para los demás comandos.
+1. Instala **Node.js 22.13 o superior** desde https://nodejs.org. Node.js permite ejecutar el aplicativo; su instalador incluye npm, que usaremos una sola vez para instalar pnpm. pnpm será la herramienta para los demás comandos.
 2. Abre una terminal y ejecuta `npm install --global pnpm@11.19.0` para instalar pnpm. Es el único paso que utiliza npm. Si pide permisos de administrador y no los tienes, solicita ayuda a quien administre el equipo.
 3. Descarga el proyecto desde https://github.com/elianatorres5772/reto1: pulsa **Code**, después **Download ZIP** y extrae el ZIP. También puedes usar la carpeta del proyecto si ya la tienes.
 4. Abre la carpeta que contiene `package.json`, `README.md` y `src`. Si descargaste el ZIP, normalmente se llama `reto1-main`.
@@ -38,7 +38,7 @@ node --version
 pnpm --version
 ```
 
-**Qué debes ver:** un número de versión después de cada comando. Node.js debe ser versión 24.15 o superior de la rama 24 (Node 24 LTS) y pnpm debe mostrar 11.19.0. Si aparece «comando no encontrado» o «no se reconoce», instala Node.js y pnpm como indica el paso 1, y cierra y vuelve a abrir la terminal.
+**Qué debes ver:** un número de versión después de cada comando. Node.js debe ser versión 22.13 o superior y pnpm debe mostrar 11.19.0. Si aparece «comando no encontrado» o «no se reconoce», instala Node.js y pnpm como indica el paso 1, y cierra y vuelve a abrir la terminal.
 
 ## 3. Instalar las herramientas del proyecto
 
@@ -252,28 +252,3 @@ Para conocer todo el código y los cambios desde el primer push, abre [EXPLICACI
 Los documentos quedan en `out/<caso>/`. Ahí puedes encontrar el formulario, la carpeta `paquete`, su checklist y borrador de correo. Solo una simulación autorizada y sin soportes bloqueantes crea `ENVIO-SIMULADO.md`. El archivo `valores-portal.md` sirve para copiar los valores manualmente en Panamá.
 
 En Honduras, las referencias comerciales faltantes se muestran para revisión, pero no bloquean por sí solas «listo para firma». Los soportes vencidos o ausentes sí lo bloquean. Después de confirmar el paquete, el chat pregunta por la simulación; otro «sí» en el turno inmediato siguiente autoriza esa nueva acción.
-
-## Pruebas nuevas con Cucumber, Serenity/JS y MCP
-
-En una instalación nueva, descarga los navegadores una vez:
-
-```powershell
-pnpm run test:browsers
-```
-
-Después ejecuta estos comandos por separado:
-
-```powershell
-pnpm run test:bdd
-pnpm run test:mcp
-```
-
-El primero comprueba 11 escenarios de negocio con el patrón Screenplay; el segundo controla un navegador mediante MCP y comprueba los permisos del flujo. Inician y detienen sus propios servidores: no necesitas arrancar el aplicativo ni configurar una clave LLM. En el segundo, debes ver «MCP aprobado»; en el primero, «11 scenarios (11 passed)».
-
-Para ver el reporte Cucumber:
-
-```powershell
-Start-Process .\reports\bdd\cucumber.html
-```
-
-La guía [tests/bdd/README.md](tests/bdd/README.md) explica las pruebas, las etiquetas, el reporte adicional de Serenity con Java y la conexión MCP desde un editor.

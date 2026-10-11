@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "pnpm",
-      "args": ["run", "--silent", "mcp:playwright"]
-    }
-  }
-}

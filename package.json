@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "^22.22.2 || ^24.15.0"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "tsx src/server/index.ts",
@@ -16,17 +16,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "check:all": "pnpm run check && pnpm run test:e2e && pnpm run test:bdd && pnpm run test:mcp",
+    "check:all": "pnpm run check && pnpm run test:e2e",
     "build": "tsc -p tsconfig.build.json && tsx scripts/copy-assets.ts",
     "demo:historico": "tsx demo.ts --historico",
     "module": "tsx scripts/build-module.ts",
-    "module:check": "tsx scripts/build-module.ts --check",
-    "test:bdd": "tsx scripts/run-bdd.ts",
-    "test:bdd:confirmaciones": "tsx scripts/run-bdd.ts --tags @confirmacion",
-    "test:mcp": "tsx scripts/mcp-smoke.ts",
-    "mcp:playwright": "tsx scripts/playwright-mcp.ts",
-    "test:browsers": "tsx scripts/install-qa-browsers.ts",
-    "report:bdd": "serenity-bdd run --source reports/bdd/serenity --destination reports/bdd/html --features tests/bdd/features"
+    "module:check": "tsx scripts/build-module.ts --check"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
@@ -37,20 +31,9 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.9.0",
-    "@modelcontextprotocol/sdk": "^1.32.1",
-    "@playwright/mcp": "0.0.83",
     "@playwright/test": "^1.64.0",
-    "@serenity-js/assertions": "3.48.2",
-    "@serenity-js/console-reporter": "3.48.2",
-    "@serenity-js/core": "3.48.2",
-    "@serenity-js/cucumber": "3.48.2",
-    "@serenity-js/playwright": "3.48.2",
-    "@serenity-js/serenity-bdd": "3.48.2",
-    "@serenity-js/web": "3.48.2",
     "@types/node": "^22.18.0",
     "bun": "^1.3.0",
-    "playwright-core": "~1.63.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   },

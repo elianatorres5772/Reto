@@ -41,7 +41,7 @@ node --version
 pnpm --version
 ```
 
-Necesitas Node 24.15 o superior de la rama 24 (Node 24 LTS) y pnpm 11.19.0. Si no están instalados, sigue [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md). Instala las dependencias del proyecto:
+Necesitas Node 22.13 o superior y pnpm 11.19.0. Si no están instalados, sigue [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md). Instala las dependencias del proyecto:
 
 ```powershell
 pnpm install --frozen-lockfile

@@ -4,7 +4,7 @@ Agente de registro con TypeScript, herramientas Zod y chat. Lee solicitudes, gen
 
 ## Ejecutar en local
 
-Requiere Node 22.22.2+ de la rama 22 o Node 24.15+ (se recomienda Node 24 LTS), y pnpm 11.19.0. La versión mínima permite ejecutar Serenity/JS. Instala pnpm una vez con `npm install --global pnpm@11.19.0`. Desde la carpeta del proyecto:
+Requiere Node 22.13+ y pnpm 11.19.0. Instala pnpm una vez con `npm install --global pnpm@11.19.0`. Desde la carpeta del proyecto:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -31,18 +31,6 @@ pnpm run build
 El demo ejecuta los cinco contratos públicos en todos los casos, **sin LLM**, usa fecha actual UTC y limpia `out/` al comenzar. Detén el servidor y descarga los documentos que quieras conservar antes de ejecutarlo. `demo:historico` usa las fechas de las solicitudes y lo declara. Soportes vencidos bloquean firma/simulación; los campos faltantes se enumeran sin bloquear por sí solos.
 
 En cloud con Chromium instalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e`. La suite usa servidores temporales y un LLM simulado para los escenarios conversacionales, sin cargos. `pnpm run check:all` reúne las verificaciones; el requisito Bun también puede ejecutarse con `bun install && bun run demo.ts`, aunque pnpm es el gestor oficial del proyecto y su lockfile es el de CI.
-
-## Pruebas Cucumber y Serenity/JS con Screenplay
-
-Las 19 pruebas Playwright existentes se conservan. Se añaden 11 escenarios BDD en español, reportes Cucumber/Serenity y una comprobación de navegador mediante un servidor MCP real:
-
-```sh
-pnpm run test:browsers
-pnpm run test:bdd
-pnpm run test:mcp
-```
-
-No requieren clave LLM; backend y navegador son reales y el proveedor LLM de pruebas está simulado. [tests/bdd/README.md](tests/bdd/README.md) explica los comandos, reportes, el patrón Screenplay y cómo conectar `.mcp.json` al cliente de desarrollo. Java 21 solo es necesario para `pnpm run report:bdd`; el HTML Cucumber se genera sin Java.
 
 ## Variables de entorno
 
