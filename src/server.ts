@@ -49,7 +49,7 @@ export const server=createServer(async(req,res)=>{
     if(!originAllowed(req)) {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
     if(req.method==='POST'&&!rateAllowed(req)){json(res,429,{ok:false,error:'Demasiadas solicitudes. Espera un minuto.'});return;}
     const url=new URL(req.url??'/','http://localhost');
-    if(req.method==='GET' && ['/','/registration.js','/chat.js','/styles.css','/assets/assistant.svg'].includes(url.pathname)) {
+    if(req.method==='GET' && ['/','/theme.js','/registration.js','/chat.js','/styles.css','/assets/assistant.svg'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
       res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;

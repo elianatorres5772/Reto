@@ -28,3 +28,34 @@
 @keyframes pulse{50%{box-shadow:0 0 0 6px rgba(217,154,31,.25)}}
 @media(max-width:720px){.chat-dialog{width:100vw;height:100dvh;max-width:none;max-height:none;border-radius:0}.chat-launcher{right:16px;bottom:16px}.chat-history,.chat-form,.chat-commands,.chat-case{padding-left:16px;padding-right:16px}}
 @media(prefers-reduced-motion:reduce){.chat-confirmation{animation:none}}
+
+/* Selector de tema en la cabecera */
+.header-actions{display:flex;align-items:center;gap:14px}
+.header-actions>span{font-size:13px;color:var(--muted)}
+.theme-toggle{padding:8px 14px;font-size:13px;white-space:nowrap}
+@media(max-width:720px){.header-actions{gap:8px}.header-actions>span{display:none}}
+
+/* Modo oscuro: mismo verde de marca (#6dfd8c) sobre superficies oscuras */
+:root[data-theme=dark]{color-scheme:dark;color:#e6ece9;background:#0f1412;--green:#e6ece9;--line:#2c3631;--muted:#9aa6a0;--soft:#1b2a21;--white:#171e1b}
+:root[data-theme=dark] .app-header,:root[data-theme=dark] .card,:root[data-theme=dark] .progress-panel,:root[data-theme=dark] .case-item,:root[data-theme=dark] .chat-dialog{background:#171e1b}
+:root[data-theme=dark] select,:root[data-theme=dark] .secondary,:root[data-theme=dark] .chat-form input{background:#1d2622;color:#e6ece9;border-color:#5c6762}
+:root[data-theme=dark] .hero{background:#14301e}
+:root[data-theme=dark] .hero h2,:root[data-theme=dark] summary{color:#f1f5f3}
+:root[data-theme=dark] .hero p,:root[data-theme=dark] th{color:#c3ccc7}
+:root[data-theme=dark] .case-item[aria-pressed=true]{background:#14301e}
+:root[data-theme=dark] pre{background:#1d2622}
+:root[data-theme=dark] th{background:#1b2a21}
+:root[data-theme=dark] th,:root[data-theme=dark] td{border-bottom-color:#2c3631}
+:root[data-theme=dark] #steps li>span{background:#26302b;color:#9aa6a0}
+:root[data-theme=dark] #steps li[data-status=done]>span{background:#2a5a39;color:#e6ece9}
+:root[data-theme=dark] .processing,:root[data-theme=dark] .approval,:root[data-theme=dark] .downloads button{background:#1b2a21;color:#e6ece9}
+:root[data-theme=dark] .spinner{border-color:#2a5a39;border-top-color:#6dfd8c}
+:root[data-theme=dark] .pill.warn{background:#3a2e12;color:#f3cf7a}
+:root[data-theme=dark] .pill.bad,:root[data-theme=dark] #steps li[data-status=error]>span{background:#3a1d18;color:#ffb4a3}
+:root[data-theme=dark] .alert{background:#2e1a16;border-color:#6b3326;color:#ffb4a3}
+:root[data-theme=dark] .warnings{color:#e4c07a}
+:root[data-theme=dark] .chat-tool{background:#152019}
+:root[data-theme=dark] .chat-tool[data-ok=false]{background:#2e1a16;border-color:#a8574a}
+:root[data-theme=dark] .chat-confirmation{background:#2f2610;color:#f6dd9b}
+:root[data-theme=dark] .chat-dialog::backdrop{background:rgba(0,0,0,.6)}
+:root[data-theme=dark] button:focus-visible,:root[data-theme=dark] select:focus-visible,:root[data-theme=dark] a:focus-visible,:root[data-theme=dark] summary:focus-visible{box-shadow:0 0 0 5px #0f1412}

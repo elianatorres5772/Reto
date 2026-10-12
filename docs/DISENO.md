@@ -2,6 +2,8 @@
 
 **Paleta.** El verde de la marca es **#6dfd8c**: botones principales, acentos, bordes destacados, pasos activos, mensajes de la usuaria y tintes suaves del mismo tono en fondos (#e9fff0, #dcffe4, #c4fed1). Como #6dfd8c es muy claro, el texto sobre él es casi negro (#0b2414) y los textos que antes eran verde oscuro pasan a grises neutros (#1a1f1c, #3d4541, #5b6460), para mantener el contraste legible. La cabecera ya no usa imagen de fondo.
 
+**Tema claro y oscuro.** El botón de la cabecera alterna entre ambos modos. `web/theme.js` se carga en el `<head>` antes de los estilos y aplica `data-theme` en `<html>` antes de pintar, sin parpadeo. Sin elección guardada, sigue la preferencia del sistema (`prefers-color-scheme`); la elección se guarda en `localStorage` y, si el navegador lo bloquea, dura solo la visita. El modo oscuro conserva #6dfd8c como verde de la marca sobre superficies oscuras (#0f1412, #171e1b), con texto claro y avisos ámbar y rojo ajustados para que se lean.
+
 La pantalla principal es un flujo de trabajo con entrada de solicitudes, correo, campos, soportes, autorización y descargas. Conserva la paleta verde manzana y usa el fondo de referencia como cabecera. El chat del agente se abre en una ventana modal (`web/chat.js`) desde el botón flotante **Conversar con el agente**: historial, indicador de pensando, tarjetas por herramienta y aviso de confirmación resaltado en ámbar. La captura actual se encuentra en `capturas/front-actual.png`. Se verifican escritorio y un tamaño móvil.
 
 El apartado siguiente documenta el origen de los recursos y el diseño conversacional anterior como historial, no como interfaz vigente.

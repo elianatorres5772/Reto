@@ -39,6 +39,8 @@ Con los fixtures, la cámara de comercio vence el 2026-09-30, así que después 
 
 Otras órdenes que entiende sin LLM: `leer`, `mapear`, `formulario`, `paquete`, `simular`, `resumen`, `ayuda`. Al mencionar otro caso en el mensaje, el agente cambia a ese caso.
 
+El botón **☾ Modo oscuro / ☀ Modo claro** de la cabecera cambia el tema; por defecto sigue la preferencia del sistema y recuerda la elección.
+
 La pantalla principal ofrece además un **flujo documental** guiado por botones (solicitud → preparar documentos → autorizar paquete → descargas), sobre las mismas herramientas.
 
 ## `demo.ts` (herramientas sin modelo)
