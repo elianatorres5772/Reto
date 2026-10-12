@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
-  testDir:'./tests/e2e', testMatch:'**/*.spec.ts', fullyParallel:true,
-  forbidOnly:!!process.env.CI, retries:process.env.CI?1:0, workers:2,
+  testDir:'./tests/e2e', testMatch:'**/*.spec.ts', fullyParallel:false,
+  forbidOnly:!!process.env.CI, retries:process.env.CI?1:0,
+  // Un solo worker: los servidores de prueba comparten disco y con 2 navegadores se saturan en Windows.
+  workers:1,
   timeout:30000, expect:{timeout:5000},
   reporter:[['list'],['html',{open:'never'}]],
   outputDir:'test-results',

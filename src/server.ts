@@ -15,10 +15,15 @@ const catalog=createProveedorTools();
 const evaluationDate=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(d=>!Number.isNaN(Date.parse(d))&&d<=new Date().toISOString().slice(0,10)).optional().safeParse(process.env.FECHA_EVALUACION||undefined);
 const today=evaluationDate.success&&evaluationDate.data?()=>evaluationDate.data!:undefined;
 const MAX_SESSIONS=100;
+// Protección CSRF solo para peticiones que cambian estado. Abrir la página desde otro sitio
+// (por ejemplo, un enlace en el panel del hosting) es una navegación GET legítima.
 const originAllowed=(req:IncomingMessage)=>{
+ if(req.method==='GET'||req.method==='HEAD')return true;
  const origin=req.headers.origin;
- const allowed=process.env.PUBLIC_ORIGIN;
- return (!origin||origin===`http://${req.headers.host}`||origin===`https://${req.headers.host}`||origin===allowed)&&req.headers['sec-fetch-site']!=='cross-site';
+ // Detrás de un proxy (Render) el dominio público puede llegar en X-Forwarded-Host.
+ const hosts=[req.headers.host,...String(req.headers['x-forwarded-host']??'').split(',')].map(h=>h?.trim()).filter(Boolean);
+ const sameOrigin=!!origin&&hosts.some(h=>origin===`https://${h}`||origin===`http://${h}`);
+ return (!origin||sameOrigin||origin===process.env.PUBLIC_ORIGIN)&&req.headers['sec-fetch-site']!=='cross-site';
 };
 const requests=new Map<string,{minute:number;count:number}>();
 function rateAllowed(req:IncomingMessage){const ip=req.socket.remoteAddress??'unknown',minute=Math.floor(Date.now()/60000);for(const [key,row] of requests)if(row.minute!==minute)requests.delete(key);const row=requests.get(ip)??{minute,count:0};row.count++;requests.set(ip,row);return row.count<=(z.coerce.number().int().min(1).max(10000).safeParse(process.env.CHAT_RATE_LIMIT).data??120);}

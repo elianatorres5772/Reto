@@ -49,6 +49,12 @@ test('HTTP: chat incremental, confirmación, descarga aislada, errores y segurid
     const malformed=await fetch(`${base}/api/chat`,{method:'POST',headers,body:'{'});assert.equal(malformed.status,400);
     const traversal=await fetch(`${base}/api/chat`,{method:'POST',headers,body:JSON.stringify({caso_id:'../../maestro',message:'leer'})});assert.equal(traversal.status,400);
     const csrf=await fetch(`${base}/api/chat`,{method:'POST',headers:{...headers,Origin:'https://attacker.invalid'},body:'{}'});assert.equal(csrf.status,403);
+    // Abrir la página desde un enlace de otro sitio (panel del hosting) es una navegación válida.
+    assert.equal((await fetch(base,{headers:{'Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate'}})).status,200);
+    assert.equal((await fetch(`${base}/api/health`,{headers:{'Sec-Fetch-Site':'cross-site'}})).status,200);
+    assert.equal((await fetch(`${base}/api/chat`,{method:'POST',headers:{...headers,'Sec-Fetch-Site':'cross-site'},body:'{}'})).status,403);
+    // Detrás del proxy de Render, el dominio público llega en X-Forwarded-Host.
+    const proxied=await fetch(`${base}/api/chat`,{method:'POST',headers:{...headers,Origin:'https://registro-proveedor.onrender.com','X-Forwarded-Host':'registro-proveedor.onrender.com','Sec-Fetch-Site':'same-origin'},body:'{}'});assert.equal(proxied.status,400);
     const unauth=await fetch(`${base}/api/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(unauth.status,401);
     assert.ok((await chat('leer')).some(e=>e.type==='tool_result'&&contracts.proveedor_leer_solicitud.output.safeParse(e.result).success));
     const historyResponse=await fetch(`${base}/api/sessions/${session.session_id}`,{headers});assert.equal(historyResponse.status,200);const history=z.object({history:z.array(z.object({type:z.string(),role:z.string().optional()}))}).parse(await historyResponse.json());assert.ok(history.history.some(e=>e.role==='user'));
