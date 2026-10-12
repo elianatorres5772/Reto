@@ -1,95 +1,89 @@
-# Registro como proveedor
+# Registro como proveedor · Preparación documental
 
-Agente de registro con TypeScript, herramientas Zod y chat. Lee solicitudes, genera Excel/PDF, prepara documentación para firma y simula el envío después de confirmaciones humanas. Datos ficticios: CO, EC, HN y PA.
+Aplicativo TypeScript para automatizar la transcripción de solicitudes de clientes al formulario de registro como proveedor. La pantalla de trabajo muestra solicitudes recibidas, correo, campos del maestro, soportes, documentos y autorización del paquete. **No es un chatbot. El proceso termina en la entrega para revisión y firma humana.**
 
-## Ejecutar en local
+## Ejecutar
 
-Requiere Node 22.13+ y pnpm 11.19.0. Instala pnpm una vez con `npm install --global pnpm@11.19.0`. Desde la carpeta del proyecto:
+Requiere Node 22.13+ y pnpm 11.19.0. Desde la carpeta del proyecto:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm run dev
 ```
 
-Abre `http://localhost:3000`. Un comando inicia front y backend: `pnpm run dev`. Si prefieres Docker, crea primero `.env` según la guía y usa `docker compose up --build`.
+Abre `http://localhost:3000`. No necesitas clave LLM para leer solicitudes, completar campos, generar documentos y preparar el paquete.
 
-Sin clave funcionan los botones y comandos `leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen`, `ayuda`. Para preguntas y acciones en lenguaje natural, configura **`LLM_API_KEY` en `.env`**, junto a `package.json`. Sigue [README_LLM.md](README_LLM.md); nunca pegues la clave en el chat, código ni GitHub.
+1. Selecciona una **Solicitud recibida** de la lista. Se muestra el correo del cliente, país, fecha, formato, adjuntos y soportes exigidos.
+2. Pulsa **Preparar documentos**. Se identifican campos, se cruzan con el maestro y se genera el Excel/PDF solicitado en un solo proceso.
+3. Revisa valores y fuentes, campos faltantes, equivalencias tributarias y soportes vigentes/ausentes/vencidos.
+4. Responde la pregunta de autorización con **Sí, preparar paquete** o cancela. El permiso corresponde a esa sesión, caso y formulario, y es de un solo uso.
+5. Descarga el formulario y el ZIP con soportes, checklist, manifiesto y borrador de correo. La revisión, firma y decisión de envío quedan al humano.
 
-Selecciona una solicitud, pulsa **Preparar borrador**, revisa el resumen y confirma el paquete. El siguiente turno pregunta por la simulación; requiere otra confirmación. El portal genera `valores-portal.md` para trabajo manual. `listo_para_firma` es un estado de preparación según soportes, no una firma ni aceptación legal.
+Un soporte ausente, vencido o sin archivo bloquea `listo_para_firma`; aun así se ofrece el paquete borrador para revisar pendientes. Un campo faltante no se inventa ni bloquea por sí solo ese estado, conforme a RN3. Las equivalencias fiscales requieren revisión humana. Para portales se genera `valores-portal.md` para copia manual y no se empaqueta ni se accede al sitio.
+
+## Alcance de las entradas
+
+Los correos están representados en `fixtures/reto-01/casos/<caso>/solicitud.json`, junto a sus mapas de plantilla y requisitos de soportes. El repositorio maestro, glosario e índice son de solo lectura. Se conservan los adjuntos originales del reto. No hay conexión a una bandeja de correo real, ni recepción de Excel/PDF arbitrarios por upload.
+
+Las plantillas binarias originales no fueron proporcionadas: Excel y PDF se reconstruyen desde `plantilla-celdas.json` y `plantilla-campos.json`. Se informa esta limitación en la pantalla y los documentos. Los datos y soportes son ficticios.
+
+## Arquitectura
+
+Monolito modular por capas: **pantalla de solicitudes → HTTP → controlador documental → herramientas Zod → fixtures / out**. `src/contracts/workflow.ts` define estados y operaciones; `src/workflow/registration.ts` controla la secuencia y la autorización. El servidor no implementa reglas tributarias, mapeo ni generación de documentos.
+
+Se mantienen el adaptador LLM, el prompt `agent/prompt.md`, las cinco herramientas públicas del PRD y la API conversacional anterior para compatibilidad técnica y demo. La nueva interfaz no llama al LLM, a `/api/chat` ni a la herramienta de simulación. La petición posterior del usuario de sustituir el chat modifica explícitamente el requisito de interfaz conversacional del PRD original; no se afirma cumplimiento de ese requisito de UI.
+
+## API del flujo documental
+
+Todas las operaciones de flujo y descargas requieren `X-Session-Id`. Las sesiones se crean anónimamente y caducan tras una hora de inactividad; no sobreviven a reinicios.
+
+| Método y ruta | Entrada / función |
+|---|---|
+| `POST /api/session` | Crea sesión y devuelve `session_id`. |
+| `GET /api/cases` | Solicitudes disponibles. |
+| `POST /api/workflow/select` | `{caso_id}`; lee el correo y descarta permisos anteriores. |
+| `POST /api/workflow/prepare` | `{caso_id}`; lectura, mapeo, formulario y pregunta de autorización. |
+| `POST /api/workflow/confirm` | `{caso_id,confirmation_id,confirmado}`; permiso explícito ligado a la pregunta vigente. |
+| `GET /api/workflow` | Estado de preparación de la sesión. |
+| `GET /api/artifacts/:id` | Descarga un documento que pertenece a la sesión. |
+| `GET /api/health` | Salud del servidor; `configured` solo informa presencia de clave LLM opcional. |
+
+Los POST del flujo devuelven NDJSON con eventos `state`, `error` y `done`. Cada estado contiene correo, mapeo, soportes, artefactos, progreso y confirmación. Las entradas y estados se validan con Zod. Los valores no se reciben del navegador; se obtienen por herramientas. Tras pérdida de conexión se consulta el estado antes de que el humano decida reintentar; no se repite automáticamente el empaquetado.
+
+## Archivos y auditoría
+
+`out/<caso>/formulario.xlsx` o `formulario.pdf`; para portal, `valores-portal.md`. El ZIP contiene formulario, soportes disponibles, `checklist.md`, `borrador-correo.md` y `manifiesto.json`. Hay auditoría técnica en `out/log.jsonl` y `out/<caso>/log.jsonl`, correlacionada por `sessionId` y sin valores bancarios ni claves.
+
+Las descargas usan copias privadas en `out/.sesiones/` identificadas por UUID. Las rutas por caso representan la exportación más reciente. `.env`, `out/`, dependencias y reportes están excluidos de Git.
 
 ## Verificar
 
 ```sh
 pnpm run check
 pnpm exec bun run demo.ts
-pnpm run demo:historico
 pnpm exec playwright install --with-deps chromium
 pnpm run test:e2e
 pnpm run build
 ```
 
-El demo ejecuta los cinco contratos públicos en todos los casos, **sin LLM**, usa fecha actual UTC y limpia `out/` al comenzar. Detén el servidor y descarga los documentos que quieras conservar antes de ejecutarlo. `demo:historico` usa las fechas de las solicitudes y lo declara. Soportes vencidos bloquean firma/simulación; los campos faltantes se enumeran sin bloquear por sí solos.
+`check` valida TypeScript, sincronización del módulo, pruebas internas y demo. **El demo limpia `out/`**: detén el servidor y conserva tus documentos antes de ejecutarlo. Invoca las cinco herramientas originales, incluida la simulación local como verificación técnica, aunque la pantalla documental no la ofrece. `pnpm run demo:historico` evalúa las fechas originales de las solicitudes y lo declara.
 
-En cloud con Chromium instalado: `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e`. La suite usa servidores temporales y un LLM simulado para los escenarios conversacionales, sin cargos. `pnpm run check:all` reúne las verificaciones; el requisito Bun también puede ejecutarse con `bun install && bun run demo.ts`, aunque pnpm es el gestor oficial del proyecto y su lockfile es el de CI.
+Las pruebas E2E actuales verifican el nuevo flujo documental, descargas, permisos, errores, aislamiento y móvil. No necesitan LLM. Si Chromium ya está instalado en cloud: `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e`. `pnpm run check:all` ejecuta check y E2E.
 
-## Variables de entorno
+## Configuración y documentos
 
-| Variable | Predeterminado / uso |
-|---|---|
-| `LLM_API_KEY` | Vacía; solo necesaria para lenguaje natural con OpenAI. |
-| `LLM_PROVIDER`, `LLM_MODEL` | `openai`, `gpt-4.1-mini`. |
-| `HOST`, `PORT` | `127.0.0.1`, `3000`; en contenedor `HOST=0.0.0.0`. |
-| `PUBLIC_ORIGIN` | Origen HTTPS exacto del despliegue; vacío en local. |
-| `AGENT_MAX_ITERATIONS` | 25 pasos por turno, rango 1–25. |
-| `LLM_MAX_OUTPUT_TOKENS` | 500, rango 1–2000. |
-| `LLM_MAX_SESSION_TOKENS` | 100000, rango 1–1000000; presupuesto reservado conservador. |
-| `LLM_MAX_DAILY_TOKENS` | 1000000, rango 1–10000000 por proceso y día UTC. |
-| `LLM_TIMEOUT_MS` | 15000, rango 1–60000. |
-| `CHAT_RATE_LIMIT` | 120 POST por minuto e IP, rango 1–10000. |
-| `OUTPUT_ROOT` | `out`; opción local avanzada de ubicación de exportaciones. |
+`HOST` y `PORT` son `127.0.0.1` y `3000` en local; usa `HOST=0.0.0.0` para contenedores. `PUBLIC_ORIGIN` es el origen HTTPS exacto si publicas. `CHAT_RATE_LIMIT` también limita los POST documentales. La clave `LLM_API_KEY` y límites `LLM_*` solo aplican a la API conversacional conservada, nunca son necesarios para esta pantalla.
 
-Valores numéricos inválidos usan los valores seguros predeterminados. Los presupuestos en memoria se reinician con el servidor; para producción debe existir control de gasto adicional en el proveedor.
+**Link público de prueba: pendiente de activar y verificar.** La configuración Docker/Render no crea una URL automáticamente.
 
-## API
+- [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md): ejecución práctica.
+- [docs/FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md): especificación del flujo y diferencia con el PRD original.
+- [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md): módulos y evolución desde el primer push.
+- [SOLUCION.md](SOLUCION.md): arquitectura, decisiones y portales.
+- [docs/VALIDACION.md](docs/VALIDACION.md): comprobaciones y limitaciones.
+- [tests/e2e/README.md](tests/e2e/README.md): pruebas del navegador.
+- [PASOS_PENDIENTES_DEL_RETO.md](PASOS_PENDIENTES_DEL_RETO.md): publicación y evidencia final.
+- [README_LLM.md](README_LLM.md): configuración opcional del adaptador conservado.
+- [docs/PRD_RETO_01.md](docs/PRD_RETO_01.md): documento original sin modificaciones.
 
-| Método y ruta | Uso |
-|---|---|
-| `POST /api/session` | Crea sesión y retorna `{ok:true,session_id}`. |
-| `GET /api/cases` | Catálogo de casos. |
-| `POST /api/chat` | Header `X-Session-Id`; JSON `{caso_id,message}`; respuesta NDJSON de eventos `thinking`, `tool_call`, `tool_result`, `message`, `confirmation`, `case_selected`, `done`. |
-| `GET /api/sessions/:id` | Historial completo, incluyendo mensajes del usuario; exige el header de esa misma sesión. |
-| `GET /api/artifacts/:id` | Descarga de artefacto registrado en esa sesión; exige `X-Session-Id`. |
-| `GET /api/health` | `{ok,mode,provider,model,configured}`; `configured` informa presencia de clave, no conectividad autenticada. |
-
-Las llamadas públicas se documentan en [docs/ESPECIFICACION.md](docs/ESPECIFICACION.md). Los errores no devuelven claves, cuerpos del proveedor o trazas. Las sesiones caducan tras una hora de inactividad y no sobreviven a reinicios.
-
-## Archivos generados
-
-`out/<caso>/formulario.xlsx` o `formulario.pdf`; para portal, `valores-portal.md`. El paquete contiene formulario, soportes existentes, `checklist.md`, `borrador-correo.md` y `manifiesto.json`; también se ofrece como ZIP descargable. Una simulación autorizada escribe `ENVIO-SIMULADO.md`. Hay auditoría en `out/log.jsonl` y `out/<caso>/log.jsonl`.
-
-`out/.sesiones/` conserva copias privadas para descargas por UUID; las rutas canónicas por caso representan la exportación más reciente y pueden reemplazarse. `out/`, `.env`, dependencias y reportes no se suben al repositorio. Los fixtures no se alteran. Se admite el repositorio maestro tanto en la distribución original recibida como en `fixtures/reto-01/repositorio/`.
-
-## Entrega y documentación
-
-**Link público de prueba: pendiente de activar y verificar.** No hay una URL pública ni clave de acceso confirmadas todavía. [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) explica cómo publicar con Docker/Render y registrar aquí la URL real. No se afirma conexión real al LLM sin probar una clave propia.
-
-- [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md): instrucciones para personas sin experiencia técnica.
-- [PASOS_PENDIENTES_DEL_RETO.md](PASOS_PENDIENTES_DEL_RETO.md): guía para conectar el LLM real, publicar y registrar la validación final.
-- [README_LLM.md](README_LLM.md): dónde poner la clave y cómo comprobar una pregunta.
-- [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md): explicación de todos los módulos y evolución desde el primer push.
-- [docs/PRD_RETO_01.md](docs/PRD_RETO_01.md): especificaciones completas proporcionadas para el reto.
-- [SOLUCION.md](SOLUCION.md): arquitectura, decisiones, portal, costos, cobertura y uso de IA.
-- [docs/VALIDACION.md](docs/VALIDACION.md): evidencia ejecutada y límites.
-- [tests/e2e/README.md](tests/e2e/README.md): pruebas de navegador.
-- [docs/DISENO.md](docs/DISENO.md): diseño y origen del fondo.
-
-## Módulo reutilizable
-
-`modulo/tools/proveedor.ts` reexporta las mismas herramientas sin importar HTTP. Prompt y skill se generan desde las fuentes del aplicativo:
-
-```sh
-pnpm run module
-pnpm run module:check
-```
-
-El segundo comando forma parte de `check` y evita copias divergentes. Para integrar, conserva `modulo/`, `src/tools/`, `src/contracts/`, fixtures y dependencias del repositorio; no es una carpeta autónoma que se pueda copiar sin esas fuentes. Ver [modulo/README.md](modulo/README.md).
+`modulo/` sigue reexportando las herramientas sin servidor HTTP. `pnpm run module:check` comprueba que prompt, conocimiento y herramientas coincidan con sus fuentes. Ver [modulo/README.md](modulo/README.md).

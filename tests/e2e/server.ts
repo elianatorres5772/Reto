@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { spawn } from 'node:child_process';
 const repo=process.cwd();
-const llm=process.argv[2]==='llm';
 const prepared=process.argv[2]!=='original';
 const dir=await mkdtemp(join(tmpdir(),'proveedor-e2e-'));
 await mkdir(join(dir,'fixtures'),{recursive:true});
@@ -21,8 +20,8 @@ if(prepared) {
   await writeFile(join(corrupt,'solicitud.json'),JSON.stringify(request));
   await writeFile(join(corrupt,'plantilla-celdas.json'),'{ JSON corrupto');
 }
-const child=spawn(process.execPath,[join(repo,'node_modules/tsx/dist/cli.mjs'),...(llm?['--import',join(repo,'tests/e2e/mock-llm.ts')]:[]),join(repo,'src/server/index.ts')],{
-  cwd:dir,env:{...process.env,HOST:'127.0.0.1',CHAT_RATE_LIMIT:'2000',PORT:llm?'3103':prepared?'3102':'3101',LLM_API_KEY:llm?'e2e-fake-key':'',DOTENV_CONFIG_PATH:join(dir,'.env')},stdio:'inherit'
+const child=spawn(process.execPath,[join(repo,'node_modules/tsx/dist/cli.mjs'),join(repo,'src/server/index.ts')],{
+  cwd:dir,env:{...process.env,HOST:'127.0.0.1',CHAT_RATE_LIMIT:'2000',PORT:prepared?'3102':'3101',LLM_API_KEY:'',DOTENV_CONFIG_PATH:join(dir,'.env')},stdio:'inherit'
 });
 let stopping=false;
 async function stop() {if(stopping)return;stopping=true;child.kill('SIGTERM');}

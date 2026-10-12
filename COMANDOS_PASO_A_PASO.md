@@ -1,254 +1,120 @@
-# Guía práctica para ejecutar el aplicativo
+# Guía práctica para ejecutar la preparación documental
 
-Esta guía explica cómo poner en funcionamiento el chat y comprobar que trabaja correctamente. No necesitas escribir código ni tener una clave de inteligencia artificial para comenzar.
+La pantalla ya no es un chat. Permite tomar una solicitud recibida del cliente, completar el formulario desde el maestro y reunir los soportes para revisión y firma. No necesitas clave de inteligencia artificial para este proceso.
 
-Los datos del proyecto son ficticios. El aplicativo genera borradores y simula procesos: no envía correos, no firma documentos ni registra proveedores en portales reales.
+## 1. Preparar el computador
 
-## 1. Antes de empezar
+Instala Node.js 22.13 o superior desde https://nodejs.org; se recomienda Node 24 LTS. Instala pnpm una sola vez:
 
-Si trabajas en el entorno cloud de este proyecto, las herramientas y el proyecto ya están instalados. Continúa en el paso 2.
-
-Si trabajas en tu computador:
-
-1. Instala **Node.js 22.13 o superior** desde https://nodejs.org. Node.js permite ejecutar el aplicativo; su instalador incluye npm, que usaremos una sola vez para instalar pnpm. pnpm será la herramienta para los demás comandos.
-2. Abre una terminal y ejecuta `npm install --global pnpm@11.19.0` para instalar pnpm. Es el único paso que utiliza npm. Si pide permisos de administrador y no los tienes, solicita ayuda a quien administre el equipo.
-3. Descarga el proyecto desde https://github.com/elianatorres5772/reto1: pulsa **Code**, después **Download ZIP** y extrae el ZIP. También puedes usar la carpeta del proyecto si ya la tienes.
-4. Abre la carpeta que contiene `package.json`, `README.md` y `src`. Si descargaste el ZIP, normalmente se llama `reto1-main`.
-5. Abre una **terminal** en esa carpeta. La terminal es una ventana para escribir comandos. En Windows puedes hacer clic derecho dentro de la carpeta y seleccionar **Abrir en Terminal**. Otra opción, en cualquier sistema, es abrir esa carpeta con Visual Studio Code y elegir **Terminal → Nueva terminal**.
-
-Copia un comando a la vez, pégalo en la terminal y pulsa **Enter**. Espera a que termine antes de ejecutar el siguiente. No copies los símbolos de los recuadros ni los mensajes de resultado.
-
-## 2. Ubicarte en la carpeta correcta
-
-En el entorno cloud escribe:
-
-```bash
-cd /workspace/reto1
+```powershell
+npm install --global pnpm@11.19.0
 ```
 
-En tu computador, si abriste la terminal dentro de la carpeta del proyecto, ya estás en el lugar correcto y no necesitas ese comando. La ruta `/workspace/reto1` corresponde al entorno cloud, no a tu computador.
+Abre la carpeta del proyecto en Visual Studio Code y elige **Terminal → Nueva terminal**. Debes estar en la carpeta que contiene `package.json`. Copia un comando a la vez y pulsa Enter.
 
-Para comprobar que Node.js y pnpm están disponibles, ejecuta estos comandos por separado:
+## 2. Descargar los cambios
 
-```bash
-node --version
+Si tienes una copia con Git:
+
+```powershell
+git pull origin main
 ```
 
-```bash
-pnpm --version
+Si aparece que `origin` no existe, agrega el repositorio y vuelve a ejecutar el pull:
+
+```powershell
+git remote add origin https://github.com/elianatorres5772/reto1.git
+git pull origin main
 ```
 
-**Qué debes ver:** un número de versión después de cada comando. Node.js debe ser versión 22.13 o superior y pnpm debe mostrar 11.19.0. Si aparece «comando no encontrado» o «no se reconoce», instala Node.js y pnpm como indica el paso 1, y cierra y vuelve a abrir la terminal.
+Si descargaste un ZIP, no puedes usar `git pull`; descarga una copia nueva o clona el repositorio en una carpeta diferente con `git clone https://github.com/elianatorres5772/reto1.git`. Conserva tus archivos locales antes de reemplazar una carpeta.
 
-## 3. Instalar las herramientas del proyecto
+## 3. Instalar e iniciar
 
-En tu computador ejecuta:
-
-```bash
+```powershell
 pnpm install --frozen-lockfile
 ```
 
-En el entorno cloud se utiliza el mismo comando. El proyecto guarda las descargas dentro de `node_modules/`, una carpeta permitida:
+Espera a que termine. Después:
 
-```bash
-pnpm install --frozen-lockfile
-```
-
-**Qué hace:** descarga las herramientas que necesita el aplicativo, con las versiones registradas en el proyecto. Requiere acceso a Internet y puede tardar unos minutos. Ejecútalo la primera vez y después de recibir cambios en las dependencias; no hace falta hacerlo cada vez que abras el chat.
-
-**Cómo saber que terminó:** vuelve a aparecer la línea donde puedes escribir un comando. Los avisos que empiezan por `WARN` no significan necesariamente que la instalación falló. Si aparece `ERR_PNPM`, revisa la sección de problemas frecuentes antes de continuar.
-
-## 4. Iniciar y usar el chat
-
-Ejecuta:
-
-```bash
+```powershell
 pnpm run dev
 ```
 
-**Qué debes ver:** `Servidor iniciado en puerto 3000.`
+Deja la terminal abierta y visita **http://localhost:3000**. Si ves la interfaz anterior, actualiza el navegador con **Ctrl + F5**. El servidor debe reiniciarse después de descargar cambios.
 
-Deja esta terminal abierta mientras usas el aplicativo. Es normal que el comando no termine: está manteniendo el chat en funcionamiento.
+## 4. Preparar una solicitud
 
-**En tu computador:** abre el navegador y escribe `http://127.0.0.1:3000` en la barra de direcciones. Usa HTTP, no HTTPS. Esta dirección funciona en el computador donde ejecutaste el comando.
+1. En **Solicitud recibida**, selecciona el cliente. También puedes pulsar una tarjeta de la lista.
+2. Revisa remitente, fecha y formato; abre **Ver correo y requisitos recibidos**.
+3. Pulsa **Preparar documentos**. El aplicativo lee los campos, busca los datos en el maestro y genera el formulario.
+4. Revisa las tablas de campos y soportes. Los faltantes no se inventan; los identificadores extranjeros se señalan para revisión.
+5. Puedes descargar el formulario antes de armar el paquete.
+6. Lee la pregunta y pulsa **Sí, preparar paquete** para reunir formulario, soportes disponibles, checklist y borrador de correo. **Cancelar preparación del paquete** conserva el formulario sin generar el ZIP.
+7. Descarga **paquete-borrador.zip**. Ábrelo y revisa los documentos antes de solicitar la firma del representante legal.
 
-**En el entorno cloud:** el servidor se ejecuta en la máquina remota. Escribir esa dirección en el navegador de tu computador no abre automáticamente el servidor cloud. Este entorno no ofrece un enlace de vista previa para localhost; puedes ejecutar las comprobaciones de los pasos siguientes desde su terminal.
+La preparación termina con la descarga. El aplicativo no firma ni envía. Un paquete con soportes vencidos/ausentes se presenta con pendientes y no está listo para firma. Las fechas originales del reto pueden producir ese bloqueo; no es una falla.
 
-Para usar el chat:
+En el caso de Panamá se descarga `valores-portal.md`, para copiar los datos manualmente en el portal. No se solicita clave del portal ni se accede al sitio.
 
-1. Selecciona una solicitud en la lista **Solicitud**.
-2. Pulsa **Leer solicitud** para revisar sus datos o **Ver campos** para revisar el mapeo.
-3. Pulsa **Preparar borrador**. El chat muestra las herramientas que utilizó.
-4. Abre una tarjeta de herramienta pulsando su título para ver los resultados o descargar el formulario.
-5. Cuando pregunte si deseas preparar el paquete, revisa lo mostrado y pulsa **Sí, confirmo**, o **No, cancelar**. La respuesta debe darse en el siguiente turno; otro mensaje cancela la autorización.
-6. Si confirmaste el paquete, abre su tarjeta para descargar el ZIP.
-7. Pulsa **Simular envío**. Esta acción solicita una confirmación nueva y puede bloquearse si faltan soportes o están vencidos.
+## 5. Ejecutar las verificaciones
 
-También puedes escribir en el chat: `leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen` o `ayuda`. Estos textos se escriben **en el chat**, no en la terminal.
+Para detener el aplicativo, pulsa **Ctrl + C** en su terminal. Conserva los documentos descargados antes del demo, porque limpia `out/`.
 
-**Situaciones esperadas:** Ecuador tiene un soporte faltante; Honduras tiene referencias comerciales pendientes; Panamá requiere gestión manual del portal. Los soportes vencidos también bloquean la simulación. Estos bloqueos protegen el proceso y no significan que el aplicativo esté dañado.
-
-## 5. Comprobar el funcionamiento sin usar el chat
-
-Si dejaste el chat abierto, abre una **segunda terminal** dentro de la misma carpeta. No escribas estos comandos en la terminal donde el servidor sigue ejecutándose.
-
-### Ejecutar la demostración de los cuatro casos
-
-```bash
-pnpm run demo
-```
-
-**Qué hace:** ejecuta directamente las cinco herramientas para cada caso, sin necesitar una clave de inteligencia artificial.
-
-**Qué debes ver:** un resumen con `casos_ejecutados: 4`. Es normal ver bloqueos como `INCOMPLETE` y `PORTAL_MANUAL` para casos que requieren información o gestión humana.
-
-La demostración y el chat evalúan los soportes a la fecha UTC actual. Para comparar con las fechas originales puedes ejecutar `pnpm run demo:historico`; ese modo lo anuncia y no acredita vigencia de hoy. La demostración limpia la carpeta `out/`: detén el servidor y descarga tus documentos antes de ejecutarla.
-
-### Ejecutar las pruebas del funcionamiento interno
-
-```bash
-pnpm test
-```
-
-**Qué hace:** comprueba datos, documentos, permisos, errores y comunicación con el servidor.
-
-**Qué debes ver:** en esta versión, 25 pruebas aprobadas (`pass 25`) y ninguna fallida (`fail 0`).
-
-### Comprobar el código, las pruebas y la demostración juntos
-
-```bash
+```powershell
 pnpm run check
 ```
 
-**Qué hace:** realiza las tres comprobaciones en orden. Si alguna falla, detiene las siguientes y muestra el error.
+Comprueba TypeScript, módulo, pruebas internas y demo. Las pruebas internas cubren herramientas, seguridad, el componente conversacional conservado y el nuevo flujo documental. Para el demo con Bun:
 
-## 6. Ejecutar pruebas automáticas que usan un navegador
+```powershell
+pnpm exec bun run demo.ts
+```
 
-Estas pruebas, llamadas **E2E**, abren un navegador automáticamente y usan el chat como lo haría una persona. Comprueban confirmaciones, descargas, errores y bloqueos. No necesitas iniciar el chat del paso 4: las pruebas inician y detienen sus propios servidores.
+El demo técnico mantiene la simulación exigida por el contrato original; esa opción no existe en la pantalla documental. Para evaluar las fechas originales de las solicitudes: `pnpm run demo:historico`.
 
-### En tu computador: preparar el navegador una vez
+Para comprobar la pantalla con un navegador automático, instala Chromium una vez:
 
-En Windows o macOS:
-
-```bash
+```powershell
 pnpm exec playwright install chromium
 ```
 
-En Linux:
+Después:
 
-```bash
-pnpm exec playwright install --with-deps chromium
-```
-
-**Qué hace:** instala el navegador de las pruebas. La variante de Linux también instala componentes del sistema y puede pedir la contraseña de administrador. Necesita Internet. Si no tienes permisos, solicita ayuda a quien administre el equipo.
-
-Después ejecuta:
-
-```bash
+```powershell
 pnpm run test:e2e
 ```
 
-### En este entorno cloud: usar el navegador que ya está instalado
+No necesitas arrancar el aplicativo antes de estas pruebas. Usan copias temporales y no requieren LLM. Si todas pasan, el resultado esperado de la suite documental es **12 passed**. Para abrir el reporte:
 
-No necesitas descargarlo. Ejecuta:
-
-```bash
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
-```
-
-Este comando es específico de Linux y de este entorno; no lo copies en una terminal de Windows.
-
-**Qué debes ver:** `19 passed`. Significa que los 19 escenarios E2E fueron aprobados. Es normal no ver una ventana de navegador: las pruebas lo utilizan en segundo plano.
-
-Las pruebas trabajan con copias temporales de los datos. No cambian las solicitudes originales y no realizan envíos reales.
-
-### Ver el informe de las pruebas
-
-En tu computador ejecuta:
-
-```bash
+```powershell
 pnpm run test:e2e:report
 ```
 
-Abre el informe en el navegador o usa la dirección que indique la terminal. Permite revisar qué se probó y los detalles de los fallos. Para cerrar el visor, pulsa **Ctrl + C** en esa terminal.
+Para compilar el aplicativo:
 
-El archivo del informe también queda en `playwright-report/index.html`. En cloud, el comando no crea una vista previa pública; los resultados resumidos pueden consultarse en la terminal.
+```powershell
+pnpm run build
+```
 
-## 7. Ejecutar todas las comprobaciones con un solo comando
+Para ejecutar check y E2E juntos:
 
-Después de completar la instalación y preparar el navegador de pruebas, ejecuta:
-
-**En tu computador:**
-
-```bash
+```powershell
 pnpm run check:all
 ```
 
-**En este entorno cloud:**
+No hay que instalar Cucumber, Serenity/JS ni MCP. No existe el comando `test:browsers` que se retiró.
 
-```bash
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all
-```
+## 6. Problemas frecuentes
 
-Comprueba el código TypeScript, las 25 pruebas internas, la demostración y los 19 escenarios E2E. No requiere clave de inteligencia artificial. Si un paso falla, los siguientes no se ejecutan.
-
-## 8. Detener y volver a iniciar el aplicativo
-
-Para detener el chat, vuelve a la terminal donde ejecutaste `pnpm run dev` y pulsa **Ctrl + C**. No escribas esas palabras como un comando: mantén presionada la tecla Ctrl y pulsa C.
-
-Para volver a iniciarlo, desde la carpeta del proyecto ejecuta otra vez:
-
-```bash
-pnpm run dev
-```
-
-Al reiniciar el servidor o recargar la página se inicia una sesión nueva. Descarga los documentos que quieras conservar antes de cerrar tu sesión. Los archivos generados se guardan en `out/`; no se suben a GitHub.
-
-## 9. Problemas frecuentes
-
-| Mensaje o situación | Qué hacer |
+| Situación | Qué hacer |
 |---|---|
-| No se reconoce `node` o `pnpm` | Instala Node.js y pnpm según el paso 1 y vuelve a abrir la terminal. |
-| No encuentra `package.json` | Abre la terminal dentro de la carpeta del proyecto, no dentro de `src` ni en la carpeta del ZIP sin extraer. |
-| PowerShell bloquea `pnpm.ps1` | En Windows, prueba `pnpm.cmd` en lugar de `pnpm`. Por ejemplo: `pnpm.cmd run dev`. Para la instalación inicial de pnpm puedes usar `npm.cmd install --global pnpm@11.19.0`. |
-| Falló una descarga o aparece `Domain forbidden` | Revisa la conexión o la política de red. Para E2E en este cloud utiliza el Chromium ya instalado, como indica el paso 6. |
-| «Executable doesn't exist» al probar el navegador | Instala Chromium con el comando del paso 6 o usa la variante cloud si estás en este entorno. |
-| El puerto 3000 está ocupado o aparece `EADDRINUSE` | Puede que el chat ya esté abierto. Usa esa instancia o detén tu ejecución anterior con Ctrl + C antes de iniciar otra. No cierres procesos que no reconozcas. |
-| Las E2E indican que 3101 o 3102 están ocupados | Detén una ejecución anterior de las pruebas y vuelve a intentarlo. Estos puertos son exclusivos de la suite. |
-| La simulación informa datos o soportes pendientes | Revisa los resultados de las herramientas. No es un fallo técnico; la aplicación exige información completa y vigente. |
-| Ya no puedes descargar un documento después de recargar | La sesión cambió. Vuelve a preparar el borrador y confirma nuevamente. |
-| Aparecen pruebas fallidas | Consulta el informe y comparte el nombre de la prueba y el mensaje de error con la persona responsable del proyecto. No compartas claves ni archivos `.env`. |
+| PowerShell bloquea `pnpm.ps1` | Usa `pnpm.cmd`; por ejemplo `pnpm.cmd run dev`. |
+| El puerto 3000 está ocupado | Revisa si ya tienes una terminal ejecutando el servidor. Detén ese proceso con Ctrl + C. |
+| Sigue apareciendo el chat | Ejecuta pull, instalación y reinicio; recarga con Ctrl + F5. |
+| Aparece conexión interrumpida | Revisa el estado que se recupera; no autorices repetidamente un paquete sin comprobar el resultado. |
+| La sesión expiró | Recarga la página y prepara de nuevo la solicitud. |
+| La descarga del navegador falla | Copia el error anterior a `ELIFECYCLE`; revisa conectividad y certificados sin desactivar TLS. |
+| Hay soportes vencidos o campos faltantes | Revisa el checklist; son pendientes de negocio, no datos que el agente pueda inventar. |
 
-## 10. Inteligencia artificial opcional
-
-Para usar el proyecto y ejecutar todas las pruebas **no hace falta configurar una clave**. Los botones y los comandos del chat funcionan sin ella.
-
-Si quieres que el chat reconozca solicitudes escritas con otras palabras, pide a la persona responsable que configure `LLM_API_KEY` en el archivo local `.env` o en los ajustes seguros del entorno cloud. Este archivo no se sube a GitHub. Nunca escribas la clave en el chat, en esta guía ni en archivos del proyecto que se publiquen.
-
-## Resumen para el uso habitual
-
-| Lo que quieres hacer | Comando desde la carpeta del proyecto |
-|---|---|
-| Iniciar el chat | `pnpm run dev` |
-| Detener el chat | Ctrl + C en su terminal |
-| Ejecutar la demostración | `pnpm run demo` |
-| Ejecutar pruebas internas | `pnpm test` |
-| Comprobar código, pruebas y demo | `pnpm run check` |
-| Ejecutar pruebas con navegador en tu computador | `pnpm run test:e2e` |
-| Ejecutar pruebas con navegador en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e` |
-| Ejecutar todas las comprobaciones en tu computador | `pnpm run check:all` |
-| Ejecutar todas las comprobaciones en este cloud | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run check:all` |
-| Ver el informe E2E en tu computador | `pnpm run test:e2e:report` |
-
-Para el primer uso, sigue los pasos en orden. En usos posteriores, normalmente basta con abrir la carpeta, ejecutar `pnpm run dev` y abrir el chat.
-
-Para activar preguntas con inteligencia artificial y saber dónde pegar la clave, sigue [README_LLM.md](README_LLM.md). La clave va en `.env`, no en este documento ni en el chat.
-
-
-## Documentos y explicación del código
-
-Para conocer todo el código y los cambios desde el primer push, abre [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md). Para publicar y obtener un link real, consulta [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). La configuración de Render no significa que ya exista un sitio público.
-
-Los documentos quedan en `out/<caso>/`. Ahí puedes encontrar el formulario, la carpeta `paquete`, su checklist y borrador de correo. Solo una simulación autorizada y sin soportes bloqueantes crea `ENVIO-SIMULADO.md`. El archivo `valores-portal.md` sirve para copiar los valores manualmente en Panamá.
-
-En Honduras, las referencias comerciales faltantes se muestran para revisión, pero no bloquean por sí solas «listo para firma». Los soportes vencidos o ausentes sí lo bloquean. Después de confirmar el paquete, el chat pregunta por la simulación; otro «sí» en el turno inmediato siguiente autoriza esa nueva acción.
+Consulta [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md) para el código y [PASOS_PENDIENTES_DEL_RETO.md](PASOS_PENDIENTES_DEL_RETO.md) para publicar el aplicativo.

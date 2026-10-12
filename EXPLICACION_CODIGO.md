@@ -4,7 +4,7 @@ Esta guía explica el aplicativo completo: qué hace cada archivo, cómo se cone
 
 ## 1. Qué problema resuelve
 
-Una analista recibe una solicitud de registro como proveedor. El sistema lee los campos y soportes pedidos, busca sus valores en un maestro ficticio, genera un formulario y prepara documentos para revisión y firma. La firma y el correo reales siguen siendo humanos. El chat permite dar comandos o hacer preguntas; las herramientas son las únicas fuentes de valores.
+Una analista recibe una solicitud de registro como proveedor. El sistema lee los campos y soportes pedidos, busca sus valores en un maestro ficticio, genera un formulario y prepara documentos para revisión y firma. La firma y el correo reales siguen siendo humanos. La pantalla actual permite seleccionar solicitudes, revisar datos y autorizar paquetes; las herramientas son las únicas fuentes de valores. El componente conversacional anterior se conserva como compatibilidad técnica.
 
 Cuatro ideas recorren todo el código:
 
@@ -151,7 +151,7 @@ La simulación revalida permiso y vigencia y escribe `ENVIO-SIMULADO.md`. No usa
 
 `writeAudit` escribe una línea JSON por registro en `out/log.jsonl` y en `out/<caso>/log.jsonl`. Incluye timestamp, sesión, herramienta, `ok` y resumen técnico. El resumen registra códigos y operaciones, no mensajes del usuario, cuentas ni cuerpos completos del proveedor. Se redacta cualquier aparición literal de la clave configurada.
 
-La fachada registra las llamadas públicas y el motor también registra revalidaciones internas. Por eso el log puede tener más líneas que tarjetas visibles en el chat. Un fallo de escritura se devuelve como error; no se afirma que la auditoría se guardó si no fue posible.
+La fachada registra las llamadas públicas y el motor también registra revalidaciones internas. Por eso el log puede tener más líneas que etapas visibles en el panel. Un fallo de escritura se devuelve como error; no se afirma que la auditoría se guardó si no fue posible.
 
 ## 8. Confirmación: `src/agent/confirmation.ts`
 
@@ -213,29 +213,28 @@ El contador diario no se comparte entre réplicas y se pierde al reiniciar. El h
 - `originAllowed`: verifica origen local/HTTPS o `PUBLIC_ORIGIN`; rechaza peticiones de navegador de otro sitio.
 - `rateAllowed`: limita POST por minuto e IP sin confiar en headers enviados por el cliente.
 
-La callback HTTP sirve solo una lista explícita de recursos web, crea sesiones, recibe chat, consulta historial, descarga UUID y entrega health/catálogo. Añade CSP y headers de seguridad. El historial solo puede consultarse con el token de su propia sesión. Los errores genéricos no publican stack ni ruta interna.
+La callback HTTP sirve una lista explícita de recursos web, crea sesiones, invoca select/prepare/confirm, entrega estado y descargas, y mantiene las rutas conversacionales anteriores para compatibilidad. Añade CSP y headers de seguridad. El historial solo puede consultarse con el token de su propia sesión. Los errores genéricos no publican stack ni ruta interna.
 
 La API usa `X-Session-Id` como token de demo, no un sistema corporativo de autenticación. En producción necesita autorización real por usuario/empresa. Las sesiones son memoria: recargar crea otra y reiniciar las elimina.
 
 ## 13. Frontend: HTML, CSS, JavaScript y assets
 
-`src/web/index.html` define selector de caso, historial, botones, aviso de datos ficticios, indicador, confirmación y formulario del mensaje. Los labels `Solicitud` y `Mensaje` permiten accesibilidad básica y selección estable en E2E.
+`src/web/index.html` define una pantalla documental: lista de solicitudes, correo, progreso, tablas de campos y soportes, descargas, pregunta de autorización y entrega al representante legal. No tiene historial ni entrada de mensajes.
 
-`styles.css` define variables de color, fondo local y transparencias verde manzana, panel, burbujas, botones, tarjetas, confirmación, estados de foco, layouts de escritorio/móvil y movimiento reducido. El historial tiene scroll propio. El fondo fue reprocesado con IA desde la referencia; su origen se documenta. Los recursos no se descargan de servicios externos durante el chat.
+`styles.css` conserva tonos verde manzana y el fondo local de referencia como cabecera. Define columnas de escritorio, tarjetas de revisión, tablas con desplazamiento propio, colores de pendientes y diseño móvil sin desbordamiento. Los controles tienen foco visible y las tablas incluyen encabezados/captions.
 
-Funciones de `chat.js`:
+Funciones de `registration.js`:
 
 | Función | Responsabilidad |
 |---|---|
-| `$` | Buscar un elemento por ID. |
-| `message` | Crear una burbuja usando `textContent`, sin ejecutar HTML del usuario. |
-| `setBusy` | Indicador y bloqueo de controles mientras se procesa. |
-| `artifacts` | Encontrar metadatos de documentos descargables en una salida. |
-| `event` | Interpretar eventos, actualizar caso, herramientas, mensajes y confirmaciones. |
-| `send` | Mandar mensaje, leer NDJSON por fragmentos y recuperar controles aun ante error. |
-| `init` | Crear sesión, cargar casos, leer modo del backend y habilitar controles. |
+| `setBusy` | Mostrar progreso y bloquear selección/acciones durante una operación. |
+| `render` | Mostrar correo, valores con fuente, soportes, descargas, pregunta y resultado desde el estado del servidor. |
+| `action` | Invocar una operación del flujo, consumir NDJSON y consultar estado tras una interrupción sin repetir acciones críticas automáticamente. |
+| `choose` | Seleccionar una solicitud y descartar resultados/permisos anteriores mediante el backend. |
+| `downloadButton` | Descargar un documento de la misma sesión, creando una URL Blob temporal. |
+| `init` | Crear sesión y cargar el catálogo de solicitudes. |
 
-Los listeners conectan formulario, botones, selector y sí/no con `send`. La descarga utiliza header de sesión, obtiene un Blob, crea un enlace temporal y libera su URL. El navegador nunca recibe la clave LLM. «LLM configurado» solo indica que hay una clave, no que la llamada autenticada ya funcionó.
+Los datos se representan con `textContent`, sin interpretar HTML de los fixtures. El navegador no recibe la clave LLM ni llama al modelo. El backend transmite estados Zod del controlador documental; la interfaz presenta solo valores de herramientas y resúmenes derivados de estados verificables.
 
 ## 14. Demo y scripts
 
@@ -279,13 +278,12 @@ out/<caso>/
 | `tests/prd.test.ts` | Forma pública del PRD, mapeo manipulado, archivos de cierre, logs, RN3, presupuestos, tope y timeout. |
 | `tests/e2e/helpers.ts` | Chromium, sesión nueva, espera de turno, guardia de red y lectura de resultados validados. |
 | `tests/e2e/server.ts` | Servidores aislados con copias de fixtures y limpieza al terminar. |
-| `tests/e2e/mock-llm.ts` | Respuestas OpenAI controladas solo en el harness de pruebas; nunca importado por producción. |
-| `tests/e2e/proveedor.spec.ts` | Uso real de UI, documentos, confirmaciones, errores, XSS y recuperación. |
-| `tests/e2e/llm.spec.ts` | Consultas desde navegador, rechazo de respuesta inválida y prompt de defensa. |
+| `tests/e2e/proveedor.spec.ts` | 12 flujos documentales, descargas, permisos, soportes, aislamiento, recuperación y móvil. |
+| `tests/workflow.test.ts` | Controlador documental, cierre sin simulación, permisos y estados coherentes con soportes y faltantes. |
 
-El servidor preparado extiende vigencias solo en copias temporales para probar un camino exitoso. El original conserva fechas para probar bloqueo hoy. El servidor LLM utiliza el backend real con proveedor simulado. Ninguna prueba de esa suite requiere una clave o cobra consumo.
+El servidor preparado extiende vigencias solo en copias temporales para probar un camino exitoso. El original conserva fechas para probar bloqueo hoy. El servidor LLM de la versión anterior se retiró de E2E; las pruebas del componente LLM conservado se mantienen en la suite interna. Ninguna prueba de esa suite requiere una clave o cobra consumo.
 
-`playwright.config.ts` inicia los tres servidores, configura Chromium, dos workers, tiempos y reportes. `.github/workflows/ci.yml` instala versiones fijadas, ejecuta check/Bun y E2E y conserva reportes. Una ejecución local exitosa no demuestra que el workflow remoto ya se haya ejecutado.
+`playwright.config.ts` inicia los dos servidores documentales, configura Chromium, dos workers, tiempos y reportes. `.github/workflows/ci.yml` instala versiones fijadas, ejecuta check/Bun y E2E y conserva reportes. Una ejecución local exitosa no demuestra que el workflow remoto ya se haya ejecutado.
 
 ## 17. Configuración y despliegue
 
@@ -299,19 +297,35 @@ El servidor preparado extiende vigencias solo en copias temporales para probar u
 - `compose.yaml`: ejecución local y volumen para documentos.
 - `render.yaml`: Blueprint para crear un servicio; secretos se ingresan en la cuenta del proveedor.
 
-El código y los archivos de despliegue no equivalen a una URL publicada. Se necesita activar hosting y hacer una pregunta con una clave propia. La evidencia de lo que realmente se ejecutó está en `docs/VALIDACION.md`.
+El código y los archivos de despliegue no equivalen a una URL publicada. Se necesita activar hosting y probar preparación, autorización y descargas. El flujo documental no requiere clave LLM. La evidencia de lo que realmente se ejecutó está en `docs/VALIDACION.md`.
 
-## 18. Recorrido práctico completo
+## 18. Recorrido práctico completo actual
 
-1. Ejecutas `pnpm run dev`: dotenv carga configuración y HTTP escucha.
-2. El navegador pide sesión, catálogo y health.
-3. Seleccionas CO y pulsas Preparar: el agente muestra lectura, mapeo y generación.
-4. Las herramientas escriben formulario con valores del maestro y muestran faltantes/revisiones/soportes.
-5. El agente pregunta por el paquete; respondes sí en el turno siguiente.
-6. El gate concede permiso específico; el motor crea archivos de paquete y ZIP y audita.
-7. El agente muestra el estado y pregunta por simulación.
-8. Otra afirmación autoriza la simulación. Si hay soportes vencidos o ausentes, retorna error controlado; si no, escribe el archivo simulado.
-9. Una pregunta al chat obtiene información de herramientas y referencias validadas. Nunca sustituye un permiso humano.
-10. Las descargas utilizan la sesión; otra sesión no puede reutilizar el UUID.
+1. `pnpm run dev` inicia HTTP; el navegador crea sesión y obtiene solicitudes disponibles.
+2. Seleccionas el cliente: `POST /api/workflow/select` muestra su correo y requisitos.
+3. Pulsas **Preparar documentos**: `POST /api/workflow/prepare` lee, mapea y genera Excel/PDF.
+4. El panel muestra campos con fuente, pendientes, equivalencias tributarias y vigencia de soportes.
+5. La pregunta explícita ofrece preparar el paquete; puedes cancelar sin perder el formulario.
+6. **Sí, preparar paquete** envía el identificador de la pregunta y se consume un permiso ligado al caso/formulario/sesión.
+7. Se reúnen formulario, soportes, checklist, manifiesto y correo borrador en ZIP. La interfaz muestra si hay soportes pendientes.
+8. Descargas los documentos; firma, revisión y decisión de envío quedan al humano. No hay simulación en este flujo.
 
-Para explicar una decisión durante la defensa, combina esta guía, la sección correspondiente de SOLUCION y su prueba. Para explicar una línea concreta, abre su archivo actual y consulta el commit con Git. Esta guía cubre responsabilidades y flujo completo, pero la persona que presenta el reto debe revisar y comprender el código antes de defenderlo.
+## 19. Cambio de chat a preparación documental
+
+La solicitud posterior del usuario modifica el requisito de chat del PRD original. El documento original se conserva. `src/agent/` y `src/llm/` siguen siendo componentes de compatibilidad técnica; ya no controlan la pantalla. La interfaz `chat.js` fue reemplazada por `registration.js`, y los E2E conversacionales se sustituyeron por 12 escenarios documentales. No se borraron las pruebas internas del componente anterior ni la quinta herramienta exigida por el demo.
+
+| Archivo nuevo o cambiado | Responsabilidad actual |
+|---|---|
+| `src/contracts/workflow.ts` | Entradas select/prepare/confirm, estado del proceso y eventos NDJSON. |
+| `src/workflow/registration.ts` | Secuencia de herramientas, progreso, permiso específico, gestión de errores y cierre documental. |
+| `src/server/index.ts` | Rutas `/api/workflow/*`, sesión que contiene controlador documental y componente anterior, descarga por registro de artefactos de la misma sesión. |
+| `src/web/index.html` | Solicitudes, correo, tablas de campos/soportes, descargas, autorización y entrega humana. |
+| `src/web/registration.js` | Interacciones de trabajo, representación segura con textContent y recuperación de estado tras interrupción. |
+| `src/web/styles.css` | Diseño de escritorio/móvil verde manzana, con tablas desplazables y controles enfocados. |
+| `tests/workflow.test.ts` | Preparación, ZIP sin simulación, permisos falsos/cancelados, pendientes y recuperación ante plantilla corrupta. |
+| `tests/e2e/helpers.ts` | Navegador protegido, acciones documentales y validación del estado Zod. |
+| `tests/e2e/proveedor.spec.ts` | 12 recorridos del panel, descargas Excel/PDF/ZIP, permisos, soportes, aislamiento, interrupción y móvil. |
+
+`createRegistrationWorkflow` mantiene un estado y un bloqueo de operación por sesión. `select` descarta permisos y lee el correo; `prepare` reinicia resultados y ejecuta las tres herramientas; `confirm` verifica el UUID de pregunta, caso y permiso y crea el paquete. `snapshot` valida el estado con Zod. No recibe valores libres del formulario ni utiliza un LLM. `ConfirmationGate` y el motor siguen verificando permisos incluso cuando se invocan herramientas directamente.
+
+Los detalles operativos y límites están en [docs/FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md). Se mantiene el alcance de fixtures y reconstrucción de formularios descrito en los capítulos anteriores: no hay correo real ni plantillas binarias originales.

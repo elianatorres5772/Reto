@@ -4,46 +4,42 @@
 
 La analista administrativa repite la transcripción de datos y la búsqueda de soportes para registrar a la empresa como proveedor; el aplicativo prepara formularios y documentación trazables para revisión y firma humana.
 
-La implementación se alinea con el [PRD v2.0 del 3 de septiembre de 2026](docs/PRD_RETO_01.md), recibido completo después de los primeros desarrollos, y con R1–R5 del usuario. Conserva los 21 fixtures originales sin editar sus contenidos. El maestro y los soportes llegaron en la raíz de `fixtures/reto-01`; el lector admite tanto esa distribución como la distribución `repositorio/` del PRD. Perú está soportado como regla tributaria, pero no se inventó un caso peruano ausente de los adjuntos.
+La nueva instrucción del usuario sustituye el chatbot por una pantalla de preparación documental. El [PRD original](docs/PRD_RETO_01.md) exigía explícitamente chat y se conserva sin modificar; el cambio de alcance se registra en [FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md). No se afirma que la nueva UI cumpla la exigencia conversacional original. Se conservan los fixtures de solo lectura, contratos Zod, reglas R1–R5 y la preparación sin firma ni envío. Las entradas son correos representados en JSON; no se conecta una bandeja real.
 
 ## 2. Arquitectura y fuentes de verdad
 
 ```mermaid
 flowchart LR
-    Chat[Chat HTML y JavaScript] --> HTTP[API HTTP y eventos NDJSON]
-    HTTP --> Agent[Sesión y ciclo del agente]
-    Agent --> Adapter[Interfaz LlmAdapter]
-    Adapter --> OpenAI[OpenAI]
-    Agent --> Gate[Confirmación por turno y artefacto]
-    Agent --> Facade[Herramientas públicas del PRD y Zod]
+    Panel[Solicitudes y revisión documental] --> HTTP[API y estados NDJSON]
+    HTTP --> Workflow[Controlador documental]
+    Workflow --> Gate[Autorización por caso y formulario]
+    Workflow --> Facade[Herramientas públicas con Zod]
     Facade --> Engine[Motor de archivos y reglas]
-    Engine --> Fixtures[Fixtures de solo lectura]
-    Engine --> Out[out: documentos y auditoría]
-    Prompt[agent/prompt.md] --> Adapter
-    Knowledge[src/knowledge/registro-proveedor.md] --> Adapter
+    Engine --> Fixtures[Correo, maestro y soportes de solo lectura]
+    Engine --> Out[Formularios, paquete y auditoría]
+    HTTP -. Compatibilidad técnica .-> Agent[Componente conversacional conservado]
+    Agent -. Opcional .-> Adapter[Adaptador LLM]
 ```
 
-El comportamiento del modelo vive en `agent/prompt.md`; el conocimiento del proceso en `src/knowledge/registro-proveedor.md`; la ejecución en `src/tools/`. El servidor no contiene el prompt ni las reglas de mapeo, vigencia o firma. El contrato ejecutable es `src/contracts/proveedor.ts`: entradas y salidas se validan con Zod. `src/tools/proveedor.ts` exporta los cinco objetos obligatorios con `description`, `args` descritos y `execute(args, ctx)` que retorna JSON serializado y captura fallos. El contexto confiable contiene raíz del proyecto y UUID de sesión; no procede del modelo.
+Es un monolito modular por capas. `src/contracts/workflow.ts` define operaciones, estados y eventos estrictos; `src/workflow/registration.ts` decide la secuencia de preparación. `src/tools/proveedor.ts` expone los cinco objetos del PRD con `description`, argumentos Zod y JSON serializado controlado. El contexto confiable aporta el UUID de sesión y motor; el navegador solo elige un caso y autoriza una pregunta vigente, nunca aporta valores del maestro.
 
-La fachada pública usa `{caso}`, `{caso,campos}`, `{caso,mapeo}`, `{caso}` y `{caso,confirmado}`. El motor conserva contratos internos con `caso_id` y UUID de artefacto para seguridad y compatibilidad con las pruebas existentes. La aplicación y el demo invocan la fachada pública. Los campos y el mapeo aportados se contrastan con los fixtures: pasar un valor inventado no modifica el maestro ni el formulario.
+`src/tools/engine.ts` conserva mapeo, reglas tributarias, evaluación de soportes, generación y descargas aisladas. El servidor gestiona HTTP y sesiones, sin reglas de negocio. La interfaz muestra resultados explícitos de las herramientas, con fuentes. No se usa IA para completar o inventar información. `agent/prompt.md`, conocimiento y adaptador LLM quedan separados y disponibles para el componente conversacional conservado, sin ser dependencias del flujo documental.
 
-## 3. Ciclo, límites y confirmación humana
+## 3. Proceso automático y cierre humano
 
-Por turno, el agente valida el caso y la sesión, cancela o consume la confirmación inmediata, clasifica la intención, ejecuta la secuencia permitida de herramientas y construye la respuesta. Para preguntas, vuelve a leer y mapear el caso, envía evidencia al LLM y valida las referencias seleccionadas. Es un ciclo con rutas acotadas, no un bucle abierto que permita al modelo ejecutar herramientas arbitrarias.
+Seleccionar una solicitud lee correo, adjuntos, país, formato y soportes exigidos. Un clic en **Preparar documentos** ejecuta lectura, mapeo y formulario; devuelve progreso, campos con fuente, datos faltantes y soportes evaluados. El usuario revisa y responde la pregunta **Sí, preparar paquete**. La autorización está ligada mediante UUID a la sesión, caso y formulario y se consume una vez. Cancelar, cambiar de solicitud o regenerar descarta el permiso anterior. Un booleano sin pregunta vigente no habilita la herramienta.
 
-`AGENT_MAX_ITERATIONS` limita pasos visibles de herramientas y llamadas al modelo (predeterminado 25, máximo 25). Al alcanzar el límite conserva los resultados en el historial y termina con un mensaje claro. Los fallos del proveedor tienen timeout configurable y no cierran la sesión.
+El paquete contiene el formulario, soportes existentes, checklist, manifiesto y borrador de correo. Su estado depende de presencia/vigencia de soportes. Un paquete con pendientes es descargable como borrador pero no se marca listo para firma. La entrega siempre mantiene firma pendiente y revisión humana, incluidas equivalencias fiscales. El flujo no llama a `proveedor_simular_envio` ni propone envío; termina en la descarga para firma. Portal genera solo valores copiables y termina en gestión manual.
 
-`ConfirmationGate` exige una pregunta explícita y la afirmación completa en el turno inmediatamente posterior. El permiso especifica caso, acción y artefacto y se consume una vez. `confirmado:true` por sí solo no autoriza la simulación. Empaquetar también exige confirmación por la instrucción R4 original del usuario. Después del paquete se muestra un resumen y una nueva pregunta para la simulación. Una consulta, rechazo o cambio de caso cancela el permiso pendiente. Esta doble confirmación conserva la instrucción original incluso cuando el ejemplo del PRD parezca condensar la preparación en un turno.
+Cada sesión admite una preparación a la vez. Los errores se muestran sin romper el resto del proceso; una plantilla corrupta conserva el correo ya leído y permite seleccionar otro caso. Ante pérdida de conexión, la UI consulta `GET /api/workflow` antes de ofrecer un reintento humano y no repite automáticamente acciones críticas. Estados y descargas son privados de la sesión. La auditoría conserva timestamp, herramienta, éxito/error y `sessionId`, sin valores sensibles.
 
-El prompt de defensa que nombra un caso cambia la selección solo después de verificarlo mediante una herramienta. Primero se reportan campos y evaluación previa de soportes; el paquete se crea tras confirmar. Evaluación previa no significa paquete existente, documento firmado ni aceptación del cliente.
+## 4. Modelo opcional conservado, costo y control de gasto
 
-## 4. Modelo, costo y control de gasto
-
-Se eligió OpenAI `gpt-4.1-mini` por el soporte de salida JSON estructurada y porque la tarea requiere clasificación y selección de datos, no redacción extensa. `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin modificar el ciclo; su nombre debe coincidir con `LLM_PROVIDER`. La implementación incluida es OpenAI; no se afirma haber integrado otros proveedores.
+La pantalla documental no llama al modelo y su preparación no consume tokens. Para la API conversacional conservada se eligió OpenAI `gpt-4.1-mini` por el soporte de salida JSON estructurada y porque la tarea requiere clasificación y selección de datos, no redacción extensa. `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin modificar el ciclo; su nombre debe coincidir con `LLM_PROVIDER`. La implementación incluida es OpenAI; no se afirma haber integrado otros proveedores.
 
 Los esquemas de argumentos se convierten desde Zod con `zod-to-json-schema`; el modelo recibe descripciones y contratos. `tool_choice:none` mantiene el despacho bajo control de la aplicación. Solo puede elegir una intención o referencias a evidencia; el código nunca publica prosa libre ni argumentos ejecutables sugeridos por el modelo.
 
-Una consulta suele requerir dos llamadas: clasificación y selección. Los botones y comandos exactos no llaman al LLM. El costo real depende del texto, las herramientas y las tarifas vigentes. Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`. Como ejemplo de estimación, no cotización vigente, 20.000 tokens de entrada y 1.500 de salida con tarifas supuestas de USD 0,40 / USD 1,60 por millón darían **USD 0,0104 por caso**. Verificar precios actuales en https://openai.com/api/pricing/ antes de publicar. No se midió consumo real sin una clave disponible.
+Una consulta suele requerir dos llamadas: clasificación y selección. El flujo documental completo no llama al LLM; los comandos exactos del componente anterior tampoco. El costo real depende del texto, las herramientas y las tarifas vigentes. Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`. Como ejemplo de estimación, no cotización vigente, 20.000 tokens de entrada y 1.500 de salida con tarifas supuestas de USD 0,40 / USD 1,60 por millón darían **USD 0,0104 por caso**. Verificar precios actuales en https://openai.com/api/pricing/ antes de publicar. No se midió consumo real sin una clave disponible.
 
 El runtime reserva un presupuesto conservador basado en bytes UTF-8 de la carga completa, margen de protocolo y salida máxima. `LLM_MAX_SESSION_TOKENS` limita la sesión y `LLM_MAX_DAILY_TOKENS` limita el proceso por día UTC; crear otra sesión no elimina el segundo límite. Se cuentan reservas de llamadas fallidas y no se reembolsan según `usage`. Esto puede bloquear antes del consumo real. Los límites se reinician al reiniciar el proceso y no se comparten entre réplicas; en producción se requiere un contador central y un límite de gasto en la cuenta del proveedor. También se limita el ritmo de POST por IP con `CHAT_RATE_LIMIT`.
 
@@ -85,15 +81,16 @@ Las credenciales las ingresa el operador directamente en el navegador del portal
 | HU-2: mapear y reportar faltantes | Hecho | Fuente del maestro, tres estados, confianza y revisión tributaria; falta validación legal de equivalencias reales. |
 | HU-3: Excel/PDF | Hecho | Hojas/celdas del mapa y PDF ordenado; no hay binarios originales que preservar. |
 | HU-3: portal | Hecho para alcance P2 | Archivo copiable y declaración de formato no soportado; acceso real excluido. |
-| HU-4: paquete y simulación | Hecho | Formulario, soportes existentes, checklist, correo, ZIP y archivo de simulación confirmado. Firma y correo reales excluidos. |
-| HU-5: recuperación de errores | Hecho | Contratos controlados, timeout, fallos de plantilla, proveedor y auditoría; la sesión sigue disponible. |
+| HU-4: paquete para revisión y firma | Hecho | Formulario, soportes disponibles, checklist, borrador de correo y ZIP. Sin simulación en la pantalla. La quinta herramienta original sigue en el demo técnico. |
+| Front conversacional del PRD original | Sustituido por instrucción posterior | Pantalla documental sin entrada de mensajes; cambio de alcance registrado explícitamente. |
+| HU-5: recuperación de errores | Hecho | Contratos controlados, timeout, fallos de plantilla, proveedor y auditoría; la sesión sigue disponible y puede preparar otra solicitud. |
 | API, logs, conocimiento, presupuestos | Hecho | Historial con usuario/herramientas, health sin clave, logs global y por caso, límites configurables. |
 | Bonus: módulo reutilizable | Hecho | `modulo/`, herramientas reexportadas y prompt/conocimiento generados; `module:check` evita divergencia. No importa servidor HTTP. |
-| URL pública y conexión autenticada | Pendiente de activación | Docker y Render preparados. Requiere cuenta de despliegue y clave propia; no se entrega una URL inventada ni se afirma una conexión real sin probarla. |
+| URL pública | Pendiente de activación | Docker/Render preparados, requiere cuenta de hosting; la pantalla no necesita clave LLM. Conexión real del componente opcional sigue sin acreditar. |
 
 ## 9. Uso de IA
 
-Se usó Codex para inspección de adjuntos, definición de contratos, implementación, pruebas, revisión del PRD y documentación. La herramienta de imágenes se usó para preparar el fondo a partir de la referencia visual; es una versión reprocesada, descrita en `docs/DISENO.md`.
+Se usó Codex para inspección de adjuntos, definición de contratos, implementación, pruebas, revisión del PRD y documentación. En la actualización documental se separó el controlador del agente conversacional, se reemplazó la UI y se adaptaron E2E a las tareas administrativas. Se descartó añadir una integración real de correo porque es un no-objetivo del PRD y no había cuenta autorizada. La herramienta de imágenes se usó para preparar el fondo a partir de la referencia visual; es una versión reprocesada, descrita en `docs/DISENO.md`.
 
 Se descartó permitir que el LLM devuelva valores o prosa libre del proveedor: se implementó selección de evidencia. También se corrigieron decisiones iniciales al recibir el PRD completo: bloqueo por campos faltantes, ausencia de archivos de cierre, estados del mapeo e interfaz de herramientas. El historial Git permite revisar esos cambios. No se afirma revisión humana línea por línea: la guía `EXPLICACION_CODIGO.md` ayuda a preparar esa defensa y las pruebas ejercitan los comportamientos críticos.
 

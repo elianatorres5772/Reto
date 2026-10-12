@@ -6,7 +6,9 @@ import { z } from 'zod';
 import { createSession } from '../agent/orchestrator.js';
 import { createProveedorTools } from '../tools/proveedor.js';
 import { caseId, artifactId } from '../contracts/proveedor.js';
-const sessions=new Map<string,{session:ReturnType<typeof createSession>;accessed:number}>();
+import { createRegistrationWorkflow } from '../workflow/registration.js';
+import { workflowAction, workflowApproval } from '../contracts/workflow.js';
+const sessions=new Map<string,{session:ReturnType<typeof createSession>;workflow:ReturnType<typeof createRegistrationWorkflow>;accessed:number}>();
 const catalog=createProveedorTools();
 const MAX_SESSIONS=100;
 const originAllowed=(req:IncomingMessage)=>{
@@ -25,13 +27,14 @@ async function body(req:IncomingMessage) {
   for await(const chunk of req){size+=chunk.length;if(size>8192)return null;chunks.push(chunk);}
   try{return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;}catch{return null;}
 }
-function authorized(req:IncomingMessage) {
+function sessionEntry(req:IncomingMessage) {
   const id=req.headers['x-session-id'];
   if(typeof id!=='string')return null;
   const entry=sessions.get(id);
   if(!entry || Date.now()-entry.accessed>TTL){sessions.delete(id);return null;}
-  entry.accessed=Date.now();return entry.session;
+  entry.accessed=Date.now();return entry;
 }
+function authorized(req:IncomingMessage) { return sessionEntry(req)?.session ?? null; }
 export const server=createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Content-Type-Options','nosniff');
@@ -42,7 +45,7 @@ export const server=createServer(async(req,res)=>{
     if(!originAllowed(req)) {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
     if(req.method==='POST'&&!rateAllowed(req)){json(res,429,{ok:false,error:'Demasiadas solicitudes. Espera un minuto.'});return;}
     const url=new URL(req.url??'/','http://localhost');
-    if(req.method==='GET' && ['/','/chat.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
+    if(req.method==='GET' && ['/','/registration.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
       res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
@@ -52,7 +55,21 @@ export const server=createServer(async(req,res)=>{
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);
       if(sessions.size>=MAX_SESSIONS){json(res,503,{ok:false,error:'Capacidad temporal agotada.'});return;}
-      const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+      const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id}),workflow:createRegistrationWorkflow({sessionId:id}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+    }
+    if(req.method==='GET' && url.pathname==='/api/workflow') {
+      const entry=sessionEntry(req);if(!entry){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      json(res,200,{ok:true,data:entry.workflow.snapshot()});return;
+    }
+    if(req.method==='POST' && ['/api/workflow/select','/api/workflow/prepare','/api/workflow/confirm'].includes(url.pathname)) {
+      const entry=sessionEntry(req);if(!entry){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      const raw=await body(req);
+      const parsed=(url.pathname.endsWith('/confirm')?workflowApproval:workflowAction).safeParse(raw);
+      if(!parsed.success){json(res,400,{ok:false,error:'Solicitud de preparación inválida.'});return;}
+      res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8'});
+      const action=url.pathname.endsWith('/confirm')?'confirm':url.pathname.endsWith('/prepare')?'prepare':'select';
+      await entry.workflow[action](parsed.data,event=>{if(!res.destroyed)res.write(scrub(JSON.stringify(event))+'\n');});
+      res.end();return;
     }
     if(req.method==='GET' && url.pathname.startsWith('/api/sessions/')) {
       const session=authorized(req);
@@ -69,9 +86,9 @@ export const server=createServer(async(req,res)=>{
       res.end();return;
     }
     if(req.method==='GET' && url.pathname.startsWith('/api/artifacts/')) {
-      const session=authorized(req);if(!session){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
+      const entry=sessionEntry(req);if(!entry){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
       const id=artifactId.safeParse(url.pathname.slice('/api/artifacts/'.length));
-      const file=id.success?await session.tools.download(id.data):null;
+      const file=id.success?(await entry.workflow.tools.download(id.data)??await entry.session.tools.download(id.data)):null;
       if(!file){json(res,404,{ok:false,error:'Artefacto no disponible.'});return;}
       res.writeHead(200,{'Content-Type':file.meta.mime,'Content-Disposition':`attachment; filename="${file.meta.nombre}"`});res.end(file.bytes);return;
     }

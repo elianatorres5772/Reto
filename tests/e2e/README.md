@@ -1,8 +1,6 @@
-# Pruebas E2E de navegador
+# Pruebas E2E de preparación documental
 
-Playwright controla Chromium headless y usa la aplicación HTTP real. Los escenarios normales no simulan respuestas de herramientas, ni requieren LLM, ni acceden a portales. Cada test tiene un contexto de navegador y una sesión nuevos. La suite rechaza errores JavaScript y llamadas externas inesperadas.
-
-## Ejecutar
+La suite actual reemplaza los escenarios de UI conversacional anteriores por **12 escenarios de preparación documental**. Usa Playwright con TypeScript, backend real y navegador Chromium. No hay llamadas a LLM ni simulación de envío desde la pantalla.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -10,48 +8,31 @@ pnpm exec playwright install --with-deps chromium
 pnpm run test:e2e
 ```
 
-Si el entorno ya tiene Chromium y las descargas están restringidas:
+En Windows basta `pnpm exec playwright install chromium`. Si cloud ya dispone de Chromium:
 
 ```sh
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 ```
 
-`pnpm run check:all` ejecuta las verificaciones existentes y las E2E. La variable de navegador también aplica a ese comando. `pnpm run test:e2e:ui` abre el runner interactivo cuando hay un entorno gráfico; `pnpm run test:e2e:report` abre el reporte HTML. Los fallos conservan trazas y screenshots. Los reportes, descargas y resultados no se versionan. CI instala el Chromium compatible con la versión de Playwright fijada en el lockfile y publica los reportes por siete días.
+`pnpm run check:all` añade las verificaciones internas y demo. Este último limpia `out/`: conserva tus documentos y detén el servidor de desarrollo antes de ejecutarlo. Para ver el reporte usa `pnpm run test:e2e:report`; errores conservan trazas y capturas.
 
-## Aislamiento y datos de prueba
+## Escenarios
 
-Playwright inicia tres servidores exclusivos en puertos 3101, 3102 y 3103; falla si ya están ocupados, sin reutilizar procesos ajenos. `server.ts` copia los fixtures a directorios temporales y arranca el mismo entrypoint de producción desde ellos. Los documentos generados también quedan en esos directorios y se limpian al detener el servidor. No cambia archivos de la aplicación ni fixtures originales.
+1. Solicitud de correo → campos con fuente → XLSX correcto → permiso → ZIP con integridad y firma pendiente, sin chat ni envío.
+2. Cancelación de paquete, formulario conservado y nueva autorización.
+3. Cambio de solicitud invalida el permiso anterior.
+4. Ecuador: PDF, RUC a revisar, campo y soporte ausentes, estado bloqueado.
+5. Honduras: referencias desconocidas, RTN a revisar y soportes preparados vigentes.
+6. Fixtures originales con soportes vencidos: borrador descargable y bloqueo para firma.
+7. Panamá: valores descargables para gestión manual del portal.
+8. Plantilla corrupta conserva correo, error controlado y recuperación con otro caso.
+9. Progreso y bloqueo de acciones durante la preparación.
+10. Interrupción de red y recuperación sin repetir automáticamente la operación.
+11. Descargas, autorización y estado aislados por sesión; rechazo sin sesión.
+12. Pantalla móvil sin desbordamiento horizontal y controles accesibles.
 
-- **Original (3101):** conserva los cuatro casos y sus fechas; prueba el bloqueo por vencimiento con el reloj real.
-- **Preparado (3102):** extiende únicamente las vigencias del índice a 2099-12-31 para probar éxito en CO. También añade un caso sintético con plantilla corrupta. Estas vigencias son datos de prueba; no se presentan como validaciones de soportes reales.
+Playwright inicia dos servidores temporales en 3101 y 3102; no reutiliza procesos ajenos. El original conserva las fechas reales. El preparado extiende vigencias solo en copias temporales a 2099 y crea un caso con plantilla corrupta para probar éxito y recuperación. Las modificaciones no llegan a los fixtures versionados. Las salidas temporales se limpian al finalizar.
 
-- **LLM simulado (3103):** usa el backend y herramientas reales con un proveedor OpenAI simulado mediante un módulo cargado únicamente por el harness de pruebas. No usa una clave real ni hace peticiones externas. Verifica respuestas basadas en evidencia y recuperación ante referencias inválidas.
+Cada test obtiene un contexto de navegador nuevo. El harness detecta errores JavaScript y bloquea tráfico externo. Los valores y metadatos del estado se validan con `src/contracts/workflow.ts`; XLSX/PDF se leen con bibliotecas y el ZIP se descomprime y comprueba por SHA-256. Las pausas y abortos de red solo verifican estados de espera/recuperación, sin sustituir respuestas de herramientas.
 
-El flujo usa la UI para generar el borrador, responder a cada pregunta y descargar documentos. Se verifican hashes, cuenta con cero inicial dentro del XLSX, lectura del PDF y contenido del ZIP. La simulación se comprueba como local y sin envío real. No se desactiva el gate de autorización.
-
-## Cobertura: 19 escenarios
-
-1. CO: preparación, confirmaciones separadas, descargas XLSX/ZIP y simulación.
-2. Rechazo explícito de confirmación.
-3. Turno intermedio que cancela la confirmación.
-4. Un «sí» citado no autoriza.
-5. Cambio de caso invalida la pregunta.
-6. Un permiso consumido no se reutiliza.
-7. Ecuador: dato opcional desconocido, PDF y soporte faltante.
-8. Honduras: referencia desconocida en checklist; RN3 permite firma/simulación con soportes vigentes.
-9. Fixtures originales: soportes vencidos y bloqueo a fecha actual.
-10. Panamá: valores-portal.md descargable, sin acceso ni envío externo.
-11. Plantilla corrupta: error controlado y siguiente turno funcional.
-12. Indicador de procesamiento y acciones deshabilitadas durante una petición.
-13. Pérdida de conexión y recuperación de la sesión.
-14. Contenido HTML del usuario se representa como texto, sin ejecutar código.
-15. Aislamiento de descargas entre navegadores y rechazo sin sesión.
-
-16. Pregunta sin clave: orientación de configuración y continuidad del chat.
-17. Consulta con LLM simulado: cuenta respaldada por herramientas y cancelación de confirmación.
-18. Respuesta LLM inválida: error controlado, sin clave expuesta y siguiente turno funcional.
-19. Prompt de defensa: selección del caso nombrado, reporte estructurado y pregunta antes de empaquetar.
-
-Además del proveedor LLM simulado del servidor 3103, las intervenciones sobre la red son una pausa controlada antes de continuar una petición real para observar el indicador, y un aborto único para probar recuperación. No reemplazan el backend ni sus contratos. En los demás escenarios el tráfico completo llega al servidor real.
-
-Los puertos 3101/3102/3103 deben estar libres. El caso de vencimiento original presupone una fecha actual posterior a 2026-09-30; es consistente con el reto y el entorno actual. La suite cubre Chromium de escritorio; no afirma cobertura de Firefox, WebKit, dispositivos móviles o una revisión visual manual.
+Las pruebas del adaptador LLM y del componente conversacional conservado siguen en los tests internos. La suite actual acredita Chromium de escritorio y un tamaño móvil, no cobertura completa de navegadores ni auditoría exhaustiva de accesibilidad.

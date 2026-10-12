@@ -1,4 +1,25 @@
-# Validación de la actualización al PRD completo
+# Validación del aplicativo
+
+## Flujo documental — 12 de octubre de 2026
+
+Se sustituyó la interfaz conversacional por preparación documental siguiendo la instrucción posterior del usuario. El PRD original se conserva y su requisito de chat se declara sustituido; no se afirma cumplimiento de ese requisito de interfaz.
+
+| Comprobación actual | Resultado |
+|---|---|
+| TypeScript estricto | Sin errores. |
+| Pruebas internas | 29 aprobadas: las 25 anteriores más 4 del controlador documental. |
+| E2E de la pantalla documental | 12 aprobadas; reemplazan los 19 escenarios de la interfaz conversacional anterior. |
+| Build y sincronización del módulo | Completados. |
+| Servidor compilado | Correo, preparación, autorización, estado bloqueado por soportes originales vencidos y descarga ZIP verificados. |
+| Ausencia de firma/envío/simulación en el flujo | El controlador no invoca la quinta herramienta ni genera ENVIO-SIMULADO; comprobado por prueba de archivos/auditoría y E2E sin /api/chat. |
+| Fuentes y aislamiento | Datos desde herramientas, permiso vinculado a sesión/caso/formulario y descargas rechazadas en otra sesión. |
+| Móvil | Tamaño 390 × 844 probado sin desbordamiento horizontal; se corrigió el ancho mínimo de las tablas durante la primera ejecución. |
+| Fixtures | Sin cambios versionados. Éxito probado con copias temporales, vencimiento con fechas originales. |
+| Capturas | docs/capturas/front-actual.png y flujo-documental.png, obtenidas del servidor compilado con fixtures originales. |
+
+No se utilizó clave LLM ni se llamó a OpenAI para preparar documentos. No se conectó una bandeja de correo ni un portal real. Las plantillas binarias originales no estaban disponibles; se reconstruyen desde mapas JSON. La URL pública, el arranque completo en entorno limpio y un nuevo build Docker de esta variante no se acreditan mediante estos checks. La evidencia Docker de abajo corresponde a la entrega anterior.
+
+## Validación histórica de la entrega conversacional anterior
 
 Resultados ejecutados sobre el código de esta entrega; los bloqueos esperados no son pruebas fallidas.
 

@@ -1,3 +1,9 @@
+# Diseño actual de preparación documental
+
+La interfaz principal se sustituyó por una pantalla de trabajo con entrada de solicitudes, correo, campos, soportes, autorización y descargas. Conserva la paleta verde manzana y usa el fondo de referencia como cabecera, sin burbujas ni campo de conversación. La captura actual se encuentra en `capturas/front-actual.png`. Se verifican escritorio y un tamaño móvil.
+
+El apartado siguiente documenta el origen de los recursos y el diseño conversacional anterior como historial, no como interfaz vigente.
+
 # Diseño del chat
 
 La interfaz toma como referencia visual la imagen suministrada por el usuario: paleta verde manzana claro con transparencias, fondo fotográfico, marco translúcido, avatar de asistente, sombras suaves y burbujas redondeadas. La marca del aplicativo se mantiene como «proveedor» y no se presenta como el servicio de la referencia.

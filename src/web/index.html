@@ -1,37 +1,70 @@
 <!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#86b94d"><title>Registro como proveedor</title><link rel="stylesheet" href="/styles.css"><script src="/chat.js" defer></script></head>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#e9f2dd"><title>Registro como proveedor · Preparación documental</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/registration.js" defer></script>
+</head>
 <body>
-<div class="scene" aria-hidden="true"></div>
-<main class="experience">
-  <section class="chat-shell" aria-label="Asistente de registro">
-    <div class="avatar-ring"><img src="/assets/assistant.svg" alt="" width="96" height="96"></div>
-    <div class="chat-panel">
-      <header class="chat-header">
-        <div class="brand">proveedor<span>·</span></div>
-        <p class="brand-caption">Tu asistente de registro</p>
-        <div class="connection"><span class="status-dot" aria-hidden="true"></span><span id="connection-status">Conectando…</span></div>
-        <h1>Registro como proveedor</h1>
-      </header>
-      <section class="toolbar"><label for="case">Solicitud</label><select id="case" disabled><option>Cargando casos…</option></select><span id="mode"></span></section>
-      <aside class="notice"><span class="badge">DEMO · DATOS FICTICIOS</span><p>Borradores pendientes de revisión y firma. Sin correos ni cargas a portales. Las vigencias se evalúan a la fecha actual.</p></aside>
-      <div class="conversation">
-        <section id="history" aria-label="Historial de conversación" aria-live="polite"></section>
-        <div id="thinking" role="status" hidden><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>Procesando herramientas…</div>
-        <section id="confirmation" hidden><span class="confirmation-label">Tu autorización es necesaria</span><p id="question"></p><div class="confirmation-buttons"><button id="yes">Sí, confirmo</button><button id="no">No, cancelar</button></div><span id="confirmation-state"></span></section>
-      </div>
-      <nav aria-label="Comandos"><button data-command="leer">Leer solicitud</button><button data-command="mapear">Ver campos</button><button data-command="preparar">Preparar borrador</button><button data-command="paquete">Empaquetar</button><button data-command="simular">Simular envío</button></nav>
-      <form id="chat"><label for="message">Mensaje</label><div class="composer"><input id="message" autocomplete="off" maxlength="2000" placeholder="Escribe aquí tu mensaje…" required><button type="submit">Enviar <span class="send-icon" aria-hidden="true"></span></button></div></form>
-      <footer>Datos trazables. Acciones con tu confirmación.</footer>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="Inicio de preparación documental"><img src="/assets/assistant.svg" alt="" width="42" height="42"><span>proveedor<span class="brand-dot">.</span><small>Preparación documental</small></span></a>
+    <span id="connection-status" role="status">Conectando…</span>
+  </header>
+  <main class="workspace">
+    <aside class="inbox">
+      <span class="eyebrow">ENTRADA DE SOLICITUDES</span><h1>Registro como proveedor</h1>
+      <p>Prepara el registro de la empresa ante sus clientes, a partir del correo y los datos del repositorio maestro.</p>
+      <label for="case">Solicitud recibida</label>
+      <select id="case" disabled><option value="">Cargando solicitudes…</option></select>
+      <div id="case-list" aria-label="Solicitudes disponibles"></div>
+      <div class="source-note"><strong>Datos del reto</strong><p>Los correos están representados en archivos de entrada. Formularios y soportes son ficticios; las vigencias se revisan con la fecha actual.</p></div>
+      <p class="scope-note">La firma y la decisión de enviar pertenecen al representante legal y al área administrativa.</p>
+    </aside>
+    <div class="content">
+      <section class="hero">
+        <span class="eyebrow">DEL CORREO AL PAQUETE DOCUMENTAL</span>
+        <h2>Menos transcripción.<br>Documentos preparados.</h2>
+        <p>Identifica los campos, complétalos desde el maestro y reúne los soportes para la revisión y firma humana.</p>
+      </section>
+      <div id="alert" class="alert" role="alert" hidden></div>
+      <div id="thinking" class="processing" role="status" hidden><span class="spinner" aria-hidden="true"></span><span id="processing-label">Preparando documentos…</span></div>
+      <section class="progress-panel" aria-label="Etapas de preparación"><ol id="steps">
+        <li data-step="lectura"><span>1</span>Leer solicitud</li><li data-step="mapeo"><span>2</span>Completar campos</li><li data-step="formulario"><span>3</span>Generar formulario</li><li data-step="paquete"><span>4</span>Reunir soportes</li>
+      </ol></section>
+      <section class="card request-card">
+        <div class="section-heading"><div><span class="eyebrow">1 · SOLICITUD DEL CLIENTE</span><h2 id="request-title">Selecciona una solicitud para comenzar</h2></div><span id="format" class="pill" hidden></span></div>
+        <dl id="request-meta" class="metadata"></dl>
+        <details id="email" hidden><summary>Ver correo y requisitos recibidos</summary><pre id="email-body"></pre><p id="attachments"></p><p id="required-supports"></p></details>
+        <div class="action-row"><button id="prepare" class="primary" disabled>Preparar documentos</button><p>Lectura, mapeo y formulario en un solo proceso.</p></div>
+      </section>
+      <section id="review" class="card" hidden>
+        <div class="section-heading"><div><span class="eyebrow">2 · DATOS DEL REPOSITORIO MAESTRO</span><h2>Campos del formulario</h2></div><div id="field-counts" class="counts"></div></div>
+        <p id="mapping-summary"></p>
+        <div class="table-wrap"><table><caption class="sr-only">Campos solicitados, valores, estado y fuente</caption><thead><tr><th>Campo solicitado</th><th>Valor del maestro</th><th>Estado</th><th>Fuente y revisión</th></tr></thead><tbody id="fields"></tbody></table></div>
+        <ul id="warnings" class="warnings"></ul>
+      </section>
+      <section id="supports-panel" class="card" hidden>
+        <div class="section-heading"><div><span class="eyebrow">3 · SOPORTES EXIGIDOS</span><h2>Revisión documental</h2></div><span id="evaluation-date" class="muted"></span></div>
+        <p id="supports-summary"></p>
+        <div class="table-wrap"><table><caption class="sr-only">Estado de los soportes exigidos</caption><thead><tr><th>Soporte</th><th>Archivo</th><th>Vigencia hasta</th><th>Estado</th></tr></thead><tbody id="supports"></tbody></table></div>
+      </section>
+      <section id="documents" class="card" hidden>
+        <span class="eyebrow">4 · DOCUMENTOS GENERADOS</span><h2>Descargas para revisión</h2>
+        <div id="downloads" class="downloads"></div>
+        <p id="document-note"></p>
+      </section>
+      <section id="confirmation" class="approval" hidden>
+        <span class="eyebrow">AUTORIZACIÓN DEL ÁREA ADMINISTRATIVA</span><h2>Preparar el paquete para firma</h2>
+        <p id="question"></p><p>El paquete incluirá el formulario, los soportes disponibles, el checklist y el borrador de correo. Revisa arriba los pendientes antes de autorizar.</p>
+        <div class="approval-actions"><button id="approve" class="primary">Sí, preparar paquete</button><button id="cancel" class="secondary">Cancelar preparación del paquete</button></div>
+      </section>
+      <section id="delivery" class="delivery card" hidden>
+        <span class="eyebrow">ENTREGA AL HUMANO</span><h2 id="delivery-title"></h2><p id="delivery-summary"></p>
+        <p><strong>Firma del representante legal: pendiente.</strong> Revisa el formulario y el checklist, solicita la firma y decide el envío por tus canales habituales.</p>
+      </section>
+      <details id="trace" class="trace" hidden><summary>Ver etapas ejecutadas y procedencia</summary><ul id="trace-list"></ul></details>
+      <footer>El proceso prepara documentos. No firma, no envía ni accede a portales de clientes.</footer>
     </div>
-  </section>
-  <section class="story" aria-label="Bienvenida">
-    <span class="story-eyebrow">MENOS TRÁMITES. MÁS CONVERSACIÓN.</span>
-    <h2>Tu próximo paso,<br>una conversación<span>.</span></h2>
-    <p>Un espacio para preparar tu registro, revisar tus documentos y avanzar con confianza.</p>
-    <div class="story-tags"><span>Campos con fuente</span><span>Revisión a tu ritmo</span></div>
-    <div class="welcome-bubble"><div><span>¡Hola!</span><strong>Vamos paso a paso.</strong><p>Selecciona una solicitud y empecemos.</p></div><img src="/assets/assistant.svg" alt="" width="100" height="100"></div>
-    <span class="story-footnote">ASISTENTE DE PROVEEDORES · DEMOSTRACIÓN</span>
-  </section>
-</main>
-</body></html>
+  </main>
+</body>
+</html>

@@ -1,6 +1,8 @@
-# Contratos y criterios de aceptación del PRD v2.0
+# Contratos de herramientas y flujo documental
 
-La fuente ejecutable es `src/contracts/proveedor.ts`; `src/tools/proveedor.ts` expone los objetos de herramienta con descripciones, argumentos Zod descritos y `execute(args, ctx): Promise<string>`. Los cinco contratos públicos se invocan desde chat, demo y módulo.
+El cambio de interfaz pedido posteriormente se especifica en [FLUJO_DOCUMENTAL.md](FLUJO_DOCUMENTAL.md). La pantalla ya no es conversacional; la API y los cinco contratos originales se conservan para compatibilidad y demo.
+
+La fuente ejecutable es `src/contracts/proveedor.ts`; `src/tools/proveedor.ts` expone los objetos de herramienta con descripciones, argumentos Zod descritos y `execute(args, ctx): Promise<string>`. Los cinco contratos públicos se conservan para el componente conversacional, demo y módulo. El flujo documental invoca solo lectura, mapeo, formulario y paquete.
 
 | Herramienta | Entrada pública | Salida mínima, además de metadatos trazables |
 |---|---|---|
@@ -24,7 +26,7 @@ Excel escribe etiquetas y valores en las hojas/celdas del mapa. PDF reproduce ca
 
 El paquete copia soportes existentes, incluidos los vencidos para revisión, y genera checklist, correo borrador y manifiesto. Los datos bancarios no se incluyen en el correo. Soportes exigidos ausentes, archivos faltantes o vencidos bloquean `listo_para_firma`; un campo faltante no lo bloquea por sí solo. Todos los campos faltantes y equivalencias a revisar aparecen en el checklist.
 
-Las exportaciones están en `out/<caso>/`. Las descargas por sesión usan copias privadas e inmutables con UUID en `out/.sesiones/` para evitar servir archivos de otra sesión. Los logs globales y por caso registran timestamp, herramienta, resultado y resumen técnico sin valores bancarios ni clave. La revalidación interna también deja registros; el chat muestra las llamadas públicas.
+Las exportaciones están en `out/<caso>/`. Las descargas por sesión usan copias privadas e inmutables con UUID en `out/.sesiones/` para evitar servir archivos de otra sesión. Los logs globales y por caso registran timestamp, herramienta, resultado y resumen técnico sin valores bancarios ni clave. La revalidación interna también deja registros; el panel documental muestra las etapas ejecutadas.
 
 ## Confirmación
 
@@ -34,7 +36,7 @@ Las exportaciones están en `out/<caso>/`. Las descargas por sesión usan copias
 4. El motor consume el permiso; `confirmado:true` no basta.
 5. Empaquetar y simular requieren confirmaciones independientes, conservando R4 del usuario.
 
-## Ciclo, API y consultas
+## Componente conversacional conservado: ciclo, API y consultas
 
 El ciclo usa rutas de herramientas acotadas y límite configurable de pasos por turno. La interfaz del proveedor es `LlmAdapter.enviar`; el adaptador incluido es OpenAI. Hay presupuesto por sesión, límite diario compartido por proceso, timeout y limitación de POST por IP.
 
