@@ -17,15 +17,18 @@ La imagen compila TypeScript, sirve assets y ejecuta como usuario sin privilegio
 
 ## Publicar con Render
 
-1. Entra a https://render.com y conecta GitHub.
-2. Crea un Blueprint desde `elianatorres5772/Reto`, rama `dev`, usando `render.yaml`.
-   - Para la defensa, agrega la variable `FECHA_EVALUACION=2026-08-25` para que `co-industrias-delta` pueda llegar a `ENVIO-SIMULADO.md`. Se muestra en la cabecera del chat y en `/api/health`.
-3. Revisa precios y condiciones actuales del plan antes de aceptar. No se solicita `LLM_API_KEY` para el flujo documental.
-4. Espera el despliegue; copia la dirección HTTPS real que entrega el servicio.
-5. En variables de entorno puedes configurar `PUBLIC_ORIGIN` con ese origen exacto, sin barra final. Conserva `HOST=0.0.0.0`; Render administra el puerto.
-6. Abre `/api/health` y comprueba `ok:true`. Puede indicar modo sin LLM: es correcto para esta pantalla.
-7. Prueba seleccionar solicitud, leer correo, preparar formulario, revisar pendientes, cancelar/autorizar y descargar ZIP.
-8. Anota la URL verificada en README y los resultados en `docs/VALIDACION.md`.
+1. Entra a https://render.com e inicia sesión con GitHub.
+2. **New → Blueprint**, elige el repositorio  y la rama . Render lee .
+3. Render pide dos valores:
+   - : tu clave de Claude (https://console.anthropic.com/settings/keys). Puedes dejarla vacía: el chat funciona con palabras clave.
+   - :  para la defensa.
+4. Revisa el plan (Free) y pulsa **Apply**. La primera construcción tarda unos minutos.
+5. Cuando el estado sea **Live**, copia la URL .
+6. Abre : debe responder , ,  si pusiste la clave y la fecha de evaluación.
+7. Abre la URL, pulsa **Conversar con el agente** y prueba el guion del README.
+8. Anota la URL en el README (línea «Link de prueba») y los resultados en .
+
+ no hace falta: el servidor acepta su propio dominio. Render asigna  automáticamente.
 
 El plan gratuito puede entrar en reposo y perder archivos al reiniciar. Descarga los documentos y verifica las condiciones actuales; producción requiere almacenamiento persistente. Las sesiones son anónimas, viven en memoria y no sobreviven a un reinicio. No se afirma URL activa ni publicación realizada desde este entorno.
 

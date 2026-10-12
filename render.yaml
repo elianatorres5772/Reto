@@ -9,3 +9,12 @@ services:
         value: 0.0.0.0
       - key: CHAT_RATE_LIMIT
         value: 120
+      - key: LLM_PROVIDER
+        value: anthropic
+      # Render pide estos valores al crear el servicio; no quedan en el repositorio.
+      # LLM_API_KEY: clave de Claude (opcional; sin ella el chat usa palabras clave).
+      - key: LLM_API_KEY
+        sync: false
+      # FECHA_EVALUACION: 2026-08-25 para la defensa (deja vigente la cámara de comercio de los fixtures).
+      - key: FECHA_EVALUACION
+        sync: false
