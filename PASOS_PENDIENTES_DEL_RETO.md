@@ -1,6 +1,6 @@
 # Paso a paso para publicar y validar la entrega documental
 
-El aplicativo ya no es un chatbot: prepara formularios y soportes desde las solicitudes recibidas en fixtures. No necesitas clave LLM para este proceso. El PRD original y la nueva instrucción del usuario se distinguen en [docs/FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md).
+El aplicativo es un agente conversacional (chat en ventana modal) con un flujo documental complementario por botones. No necesitas clave LLM: sin clave, el chat entiende órdenes por palabras clave. El PRD original y la nueva instrucción del usuario se distinguen en [docs/FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md).
 
 ## 1. Actualizar y arrancar
 
@@ -23,7 +23,7 @@ Si falta `origin`, sigue [COMANDOS_PASO_A_PASO.md](COMANDOS_PASO_A_PASO.md). Abr
 5. Cancela el paquete y comprueba que se conserve el formulario.
 6. Prepara de nuevo y responde **Sí, preparar paquete**.
 7. Descarga el ZIP y revisa formulario, soportes disponibles, checklist, manifiesto y borrador de correo.
-8. Comprueba que la entrega deja pendiente la firma humana y no ofrece envío o simulación.
+8. Comprueba que la entrega deja pendiente la firma humana. En el chat, con `FECHA_EVALUACION=2026-08-25`, prueba el guion del README: «envía» → «sí» → «sí» genera solo `ENVIO-SIMULADO.md` para `co-industrias-delta`.
 
 Para Panamá debe generarse `valores-portal.md` para copia manual. No se accede al portal. No cambies fechas originales para forzar el estado listo para firma; los tests emplean copias temporales para probar éxito.
 

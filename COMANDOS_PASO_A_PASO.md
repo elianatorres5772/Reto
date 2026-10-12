@@ -23,11 +23,11 @@ git pull origin main
 Si aparece que `origin` no existe, agrega el repositorio y vuelve a ejecutar el pull:
 
 ```powershell
-git remote add origin https://github.com/elianatorres5772/reto1.git
-git pull origin main
+git remote add origin https://github.com/elianatorres5772/Reto.git
+git pull origin dev
 ```
 
-Si descargaste un ZIP, no puedes usar `git pull`; descarga una copia nueva o clona el repositorio en una carpeta diferente con `git clone https://github.com/elianatorres5772/reto1.git`. Conserva tus archivos locales antes de reemplazar una carpeta.
+Si descargaste un ZIP, no puedes usar `git pull`; descarga una copia nueva o clona el repositorio en una carpeta diferente con `git clone -b dev https://github.com/elianatorres5772/Reto.git`. Conserva tus archivos locales antes de reemplazar una carpeta.
 
 ## 3. Instalar e iniciar
 

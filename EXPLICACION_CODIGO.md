@@ -312,7 +312,7 @@ El código y los archivos de despliegue no equivalen a una URL publicada. Se nec
 
 ## 19. Cambio de chat a preparación documental
 
-La solicitud posterior del usuario modifica el requisito de chat del PRD original. El documento original se conserva. `src/agent/` y `src/llm/` siguen siendo componentes de compatibilidad técnica; ya no controlan la pantalla. La interfaz `chat.js` fue reemplazada por `registration.js`, y los E2E conversacionales se sustituyeron por 12 escenarios documentales. No se borraron las pruebas internas del componente anterior ni la quinta herramienta exigida por el demo.
+Primero se sustituyó el chat por el flujo documental (`registration.js`). Después se recuperó el chat como ventana modal (`web/chat.js`) sobre `/api/chat`, de modo que `src/agent/` y `src/llm/` vuelven a controlar la conversación. Sin clave LLM, `keywordIntent` en `src/agent/llm.ts` reconoce órdenes como «procesa el caso…» o «envía». Hay 12 E2E documentales y uno del chat. No se borraron las pruebas internas del componente anterior ni la quinta herramienta exigida por el demo.
 
 | Archivo nuevo o cambiado | Responsabilidad actual |
 |---|---|

@@ -1,6 +1,6 @@
 # Diseño actual de preparación documental
 
-La interfaz principal se sustituyó por una pantalla de trabajo con entrada de solicitudes, correo, campos, soportes, autorización y descargas. Conserva la paleta verde manzana y usa el fondo de referencia como cabecera, sin burbujas ni campo de conversación. La captura actual se encuentra en `capturas/front-actual.png`. Se verifican escritorio y un tamaño móvil.
+La pantalla principal es un flujo de trabajo con entrada de solicitudes, correo, campos, soportes, autorización y descargas. Conserva la paleta verde manzana y usa el fondo de referencia como cabecera. El chat del agente se abre en una ventana modal (`web/chat.js`) desde el botón flotante **Conversar con el agente**: historial, indicador de pensando, tarjetas por herramienta y aviso de confirmación resaltado en ámbar. La captura actual se encuentra en `capturas/front-actual.png`. Se verifican escritorio y un tamaño móvil.
 
 El apartado siguiente documenta el origen de los recursos y el diseño conversacional anterior como historial, no como interfaz vigente.
 

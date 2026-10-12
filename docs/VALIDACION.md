@@ -2,7 +2,7 @@
 
 ## Flujo documental — 12 de octubre de 2026
 
-Se sustituyó la interfaz conversacional por preparación documental siguiendo la instrucción posterior del usuario. El PRD original se conserva y su requisito de chat se declara sustituido; no se afirma cumplimiento de ese requisito de interfaz.
+El front tiene dos vías sobre las mismas herramientas: el chat del agente en ventana modal (requisito del PRD) y el flujo documental por botones. El guion de la demo del PRD (§11) está cubierto por pruebas unitarias, HTTP (con `FECHA_EVALUACION`) y E2E (`tests/e2e/chat.spec.ts`).
 
 | Comprobación actual | Resultado |
 |---|---|
@@ -11,7 +11,7 @@ Se sustituyó la interfaz conversacional por preparación documental siguiendo l
 | E2E de la pantalla documental | 12 aprobadas; reemplazan los 19 escenarios de la interfaz conversacional anterior. |
 | Build y sincronización del módulo | Completados. |
 | Servidor compilado | Correo, preparación, autorización, estado bloqueado por soportes originales vencidos y descarga ZIP verificados. |
-| Ausencia de firma/envío/simulación en el flujo | El controlador no invoca la quinta herramienta ni genera ENVIO-SIMULADO; comprobado por prueba de archivos/auditoría y E2E sin /api/chat. |
+| Ausencia de firma/envío/simulación en el flujo documental | El controlador documental no invoca la quinta herramienta ni genera ENVIO-SIMULADO. En el chat, ENVIO-SIMULADO.md solo aparece tras dos confirmaciones y con el paquete listo para firma. |
 | Fuentes y aislamiento | Datos desde herramientas, permiso vinculado a sesión/caso/formulario y descargas rechazadas en otra sesión. |
 | Móvil | Tamaño 390 × 844 probado sin desbordamiento horizontal; se corrigió el ancho mínimo de las tablas durante la primera ejecución. |
 | Fixtures | Sin cambios versionados. Éxito probado con copias temporales, vencimiento con fechas originales. |

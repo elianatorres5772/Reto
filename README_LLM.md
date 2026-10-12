@@ -2,7 +2,7 @@
 
 **La pantalla de preparación documental no utiliza el LLM y funciona sin clave.** Identifica los campos de los mapas JSON, consulta el maestro, genera formularios y reúne soportes mediante herramientas deterministas.
 
-Se conserva el adaptador OpenAI y la API `/api/chat` del desarrollo anterior para compatibilidad técnica con el PRD original, pruebas internas e integraciones. No existe un campo de preguntas ni un chatbot en la interfaz actual. Configurar una clave no activa ese campo ni cambia el flujo documental.
+El chat del agente (ventana modal) usa la API `/api/chat`. Con `LLM_API_KEY`, el modelo clasifica la intención de cada mensaje y selecciona evidencia para las consultas; sin clave, se usan palabras clave. El flujo documental por botones nunca llama al modelo.
 
 Si una integración técnica necesita usar ese componente:
 

@@ -18,7 +18,8 @@ La imagen compila TypeScript, sirve assets y ejecuta como usuario sin privilegio
 ## Publicar con Render
 
 1. Entra a https://render.com y conecta GitHub.
-2. Crea un Blueprint desde `elianatorres5772/reto1`, rama `main`, usando `render.yaml`.
+2. Crea un Blueprint desde `elianatorres5772/Reto`, rama `dev`, usando `render.yaml`.
+   - Para la defensa, agrega la variable `FECHA_EVALUACION=2026-08-25` para que `co-industrias-delta` pueda llegar a `ENVIO-SIMULADO.md`. Se muestra en la cabecera del chat y en `/api/health`.
 3. Revisa precios y condiciones actuales del plan antes de aceptar. No se solicita `LLM_API_KEY` para el flujo documental.
 4. Espera el despliegue; copia la dirección HTTPS real que entrega el servicio.
 5. En variables de entorno puedes configurar `PUBLIC_ORIGIN` con ese origen exacto, sin barra final. Conserva `HOST=0.0.0.0`; Render administra el puerto.

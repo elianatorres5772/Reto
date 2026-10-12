@@ -1,124 +1,181 @@
-# Solución del agente de registro como proveedor
+# Solución · Agente conversacional "Registro como Proveedor"
 
-## 1. Problema y usuaria
+## 1. Problema en una frase
 
-La analista administrativa repite la transcripción de datos y la búsqueda de soportes para registrar a la empresa como proveedor; el aplicativo prepara formularios y documentación trazables para revisión y firma humana.
+La analista administrativa transcribe a mano, en cada solicitud de registro como proveedor, datos que ya existen en el repositorio maestro y busca los soportes uno por uno. Eso causa retrabajo, errores en datos sensibles (NIT, cuenta bancaria), dependencia de una persona y días de espera que retrasan la facturación.
 
-La nueva instrucción del usuario sustituye el chatbot por una pantalla de preparación documental. El [PRD original](docs/PRD_RETO_01.md) exigía explícitamente chat y se conserva sin modificar; el cambio de alcance se registra en [FLUJO_DOCUMENTAL.md](docs/FLUJO_DOCUMENTAL.md). No se afirma que la nueva UI cumpla la exigencia conversacional original. Se conservan los fixtures de solo lectura, contratos Zod, reglas R1–R5 y la preparación sin firma ni envío. Las entradas son correos representados en JSON; no se conecta una bandeja real.
-
-## 2. Arquitectura y fuentes de verdad
+## 2. Arquitectura
 
 ```mermaid
 flowchart LR
-    Panel[Solicitudes y revisión documental] --> HTTP[API y estados NDJSON]
-    HTTP --> Workflow[Controlador documental]
-    Workflow --> Gate[Autorización por caso y formulario]
-    Workflow --> Facade[Herramientas públicas con Zod]
-    Facade --> Engine[Motor de archivos y reglas]
-    Engine --> Fixtures[Correo, maestro y soportes de solo lectura]
-    Engine --> Out[Formularios, paquete y auditoría]
-    HTTP -. Compatibilidad técnica .-> Agent[Componente conversacional conservado]
-    Agent -. Opcional .-> Adapter[Adaptador LLM]
+    Chat[web/ · chat modal<br/>historial, herramientas, confirmación] -->|POST /api/chat NDJSON| Server[src/server.ts<br/>HTTP, sesiones, límites]
+    Docs[web/ · flujo documental<br/>botones] -->|/api/workflow/*| Server
+    Server --> Agent[src/agent/<br/>ciclo del agente + puerta de confirmación]
+    Server --> Workflow[src/workflow/<br/>flujo documental]
+    Agent -->|intención / selección de evidencia| LLM[src/llm/adapter.ts → openai.ts]
+    Agent --> Tools[src/tools/proveedor.ts<br/>5 herramientas zod]
+    Workflow --> Tools
+    Tools --> Engine[src/tools/engine.ts<br/>mapeo, reglas, Excel/PDF/ZIP]
+    Engine --> Fixtures[(fixtures/ · solo lectura)]
+    Engine --> Out[(out/ · formularios, paquete, log.jsonl)]
 ```
 
-Es un monolito modular por capas. `src/contracts/workflow.ts` define operaciones, estados y eventos estrictos; `src/workflow/registration.ts` decide la secuencia de preparación. `src/tools/proveedor.ts` expone los cinco objetos del PRD con `description`, argumentos Zod y JSON serializado controlado. El contexto confiable aporta el UUID de sesión y motor; el navegador solo elige un caso y autoriza una pregunta vigente, nunca aporta valores del maestro.
+| Responsabilidad | Dónde vive |
+|---|---|
+| **Comportamiento** (system prompt) | `agent/prompt.md`, leído en cada llamada al modelo. |
+| **Conocimiento** del proceso | `src/knowledge/registro-proveedor.md`, enviado al modelo como `process_knowledge`. |
+| **Ejecución** | `src/tools/proveedor.ts` (contrato público: `description`, `args` zod con `.describe()`, `execute(args, ctx)` que devuelve un JSON en texto y nunca lanza) y `src/tools/engine.ts` (reglas y archivos). |
+| HTTP y sesiones | `src/server.ts`. No contiene reglas de negocio: un cambio de reglas no lo toca. |
 
-`src/tools/engine.ts` conserva mapeo, reglas tributarias, evaluación de soportes, generación y descargas aisladas. El servidor gestiona HTTP y sesiones, sin reglas de negocio. La interfaz muestra resultados explícitos de las herramientas, con fuentes. No se usa IA para completar o inventar información. `agent/prompt.md`, conocimiento y adaptador LLM quedan separados y disponibles para el componente conversacional conservado, sin ser dependencias del flujo documental.
+Las herramientas no importan el servidor: `demo.ts` y `modulo/` las usan directamente. Las reglas por país, el glosario y las vigencias viven en el motor y en los fixtures, no en el servidor ni en el prompt.
 
-## 3. Proceso automático y cierre humano
+## 3. Ciclo del agente
 
-Seleccionar una solicitud lee correo, adjuntos, país, formato y soportes exigidos. Un clic en **Preparar documentos** ejecuta lectura, mapeo y formulario; devuelve progreso, campos con fuente, datos faltantes y soportes evaluados. El usuario revisa y responde la pregunta **Sí, preparar paquete**. La autorización está ligada mediante UUID a la sesión, caso y formulario y se consume una vez. Cancelar, cambiar de solicitud o regenerar descarta el permiso anterior. Un booleano sin pregunta vigente no habilita la herramienta.
+Cada mensaje del chat ejecuta un turno en `src/agent/orchestrator.ts`:
 
-El paquete contiene el formulario, soportes existentes, checklist, manifiesto y borrador de correo. Su estado depende de presencia/vigencia de soportes. Un paquete con pendientes es descargable como borrador pero no se marca listo para firma. La entrega siempre mantiene firma pendiente y revisión humana, incluidas equivalencias fiscales. El flujo no llama a `proveedor_simular_envio` ni propone envío; termina en la descarga para firma. Portal genera solo valores copiables y termina en gestión manual.
+1. **Caso.** Si el mensaje menciona un caso (`ec-corp-andina`), el agente lo lee y cambia a él. Cambiar de caso descarta cualquier confirmación pendiente.
+2. **Intención.** Con `LLM_API_KEY`, el modelo recibe el prompt, el conocimiento y los esquemas de las herramientas, y devuelve **solo** una intención de una lista cerrada (`leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen`, `ayuda`, `consulta`), validada con zod. Sin clave, o si el modelo falla, se usan palabras clave ordenadas («procesa… no envíes nada» es `preparar`, no `simular`).
+3. **Herramientas.** Cada intención ejecuta una secuencia fija de herramientas. Por ejemplo, `preparar` llama a leer, mapear y generar. Cada llamada se emite al chat (`tool_call` con argumentos y `tool_result`) y queda en `out/log.jsonl` y `out/<caso>/log.jsonl` (CA4).
+4. **Respuesta.** El resumen visible se construye con los datos que devolvieron las herramientas. En una `consulta`, el modelo solo puede elegir identificadores de evidencia entre los resultados de las herramientas; la app arma el texto con esas etiquetas, valores y fuentes. El modelo nunca escribe valores (CA2).
+5. **Tope.** Cada llamada a herramienta o al modelo consume una iteración. Al llegar a `AGENT_MAX_ITERATIONS` (25), el turno se corta, se conserva lo obtenido y se informa (CA1). Errores de herramientas o del proveedor se muestran en lenguaje claro y la sesión sigue viva (CA5).
 
-Cada sesión admite una preparación a la vez. Los errores se muestran sin romper el resto del proceso; una plantilla corrupta conserva el correo ya leído y permite seleccionar otro caso. Ante pérdida de conexión, la UI consulta `GET /api/workflow` antes de ofrecer un reintento humano y no repite automáticamente acciones críticas. Estados y descargas son privados de la sesión. La auditoría conserva timestamp, herramienta, éxito/error y `sessionId`, sin valores sensibles.
+**Confirmación humana (CA3, RN4).** `src/agent/confirmation.ts` guarda una sola pregunta pendiente, ligada a la acción, el caso y el artefacto (formulario o paquete). El permiso solo se concede si el **siguiente** mensaje es afirmativo («sí», «confirmo»…), y se consume una vez. Un mensaje intermedio, una cita («mi jefe dijo "sí"») o un cambio de caso lo anulan. El motor de herramientas vuelve a verificar el permiso antes de armar el paquete o simular el envío, así que ni el modelo ni el navegador pueden saltárselo. El front resalta la pregunta pendiente con botones Sí / No.
 
-## 4. Modelo opcional conservado, costo y control de gasto
+Secuencia del envío: «procesa…» genera el formulario y pregunta por el paquete. «envía» (sin paquete) pide confirmar el paquete. El «sí» lo arma; si `listo_para_firma`, pregunta por el envío, y el segundo «sí» escribe solo `ENVIO-SIMULADO.md`. Si el paquete está bloqueado, el agente no propone el envío y dice qué soportes actualizar.
 
-La pantalla documental no llama al modelo y su preparación no consume tokens. Para la API conversacional conservada se eligió OpenAI `gpt-4.1-mini` por el soporte de salida JSON estructurada y porque la tarea requiere clasificación y selección de datos, no redacción extensa. `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin modificar el ciclo; su nombre debe coincidir con `LLM_PROVIDER`. La implementación incluida es OpenAI; no se afirma haber integrado otros proveedores.
+## 4. Elección del modelo
 
-Los esquemas de argumentos se convierten desde Zod con `zod-to-json-schema`; el modelo recibe descripciones y contratos. `tool_choice:none` mantiene el despacho bajo control de la aplicación. Solo puede elegir una intención o referencias a evidencia; el código nunca publica prosa libre ni argumentos ejecutables sugeridos por el modelo.
+- **Proveedor y modelo:** OpenAI `gpt-4.1-mini`. Soporta salida JSON con esquema estricto, y la tarea del modelo (clasificar intención y elegir evidencia) no necesita redacción extensa.
+- **Cambio de proveedor:** `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin tocar el ciclo. Solo está implementado OpenAI.
+- **Control de gasto:**
+  - El runtime reserva un presupuesto conservador por llamada (bytes UTF-8 de la carga más la salida máxima), contra `LLM_MAX_SESSION_TOKENS` por sesión y `LLM_MAX_DAILY_TOKENS` por proceso y día UTC.
+  - Se cuentan también las llamadas fallidas.
+  - El timeout al proveedor (`LLM_TIMEOUT_MS`) se muestra como error claro.
+  - `CHAT_RATE_LIMIT` limita los POST por IP.
+- **Costo estimado por caso:** se estima, no se midió, porque no hubo clave disponible durante la construcción.
+  - Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`.
+  - Un caso típico hace una clasificación por mensaje con frase libre, más una selección de evidencia por consulta.
+  - Con 20.000 tokens de entrada y 1.500 de salida, y tarifas supuestas de USD 0,40 / USD 1,60 por millón, da **≈ USD 0,01 por caso**. Hay que verificar las tarifas vigentes antes de publicar.
+  - Las órdenes reconocidas por palabras clave y el flujo documental no consumen tokens.
 
-Una consulta suele requerir dos llamadas: clasificación y selección. El flujo documental completo no llama al LLM; los comandos exactos del componente anterior tampoco. El costo real depende del texto, las herramientas y las tarifas vigentes. Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`. Como ejemplo de estimación, no cotización vigente, 20.000 tokens de entrada y 1.500 de salida con tarifas supuestas de USD 0,40 / USD 1,60 por millón darían **USD 0,0104 por caso**. Verificar precios actuales en https://openai.com/api/pricing/ antes de publicar. No se midió consumo real sin una clave disponible.
+## 5. Diseño del portal web (§7.4)
 
-El runtime reserva un presupuesto conservador basado en bytes UTF-8 de la carga completa, margen de protocolo y salida máxima. `LLM_MAX_SESSION_TOKENS` limita la sesión y `LLM_MAX_DAILY_TOKENS` limita el proceso por día UTC; crear otra sesión no elimina el segundo límite. Se cuentan reservas de llamadas fallidas y no se reembolsan según `usage`. Esto puede bloquear antes del consumo real. Los límites se reinician al reiniciar el proceso y no se comparten entre réplicas; en producción se requiere un contador central y un límite de gasto en la cuenta del proveedor. También se limita el ritmo de POST por IP con `CHAT_RATE_LIMIT`.
+**Hoy.** El caso de Panamá responde «Formato no soportado: portal web» y genera `out/pa-logistica-istmo/valores-portal.md` con etiqueta, valor, estado y fuente, listos para copiar. No inicia sesión ni dice haber cargado nada.
 
-## 5. Portales web — diseño de §7.4
+**Estrategia de automatización.** Navegador controlado por el agente (Playwright) en una sesión aislada por operador:
+- Selectores por etiqueta y rol accesible.
+- Pruebas por versión del portal.
+- Pausa ante un layout desconocido.
 
-El caso PA produce `valores-portal.md` y declara «formato no soportado». No inicia sesión ni afirma haber cargado datos. El operador copia los valores y revisa equivalencias y soportes.
+El agente solo **rellenaría campos y adjuntaría soportes**, con una vista previa antes de cada cambio. Descarté RPA de escritorio por ser frágil y costosa de mantener. Una extensión de navegador queda como alternativa si el cliente bloquea navegadores automatizados.
 
-Una integración futura usaría Playwright/RPA con selectores de etiquetas y roles, pruebas por versión del portal, captura de errores y pausa ante layout desconocido. La automatización solo prepararía campos y adjuntos en una sesión controlada; antes de cambios críticos se mostraría una vista previa. CAPTCHA, MFA, cambios de estructura y restricciones del cliente obligan a detenerse y ceder el control al humano, sin intentos de elusión.
+**Límites.** CAPTCHA, MFA, cambios de estructura y términos del cliente que prohíban automatizar. Ante cualquiera de ellos, el agente se detiene y cede el control al humano, sin intentar eludirlos.
 
-Las credenciales las ingresa el operador directamente en el navegador del portal, o las obtiene de un gestor corporativo autorizado fuera del prompt y de los fixtures. No pasan al LLM, al repositorio ni a logs. En un navegador remoto, se deshabilitarían grabaciones de las pantallas de autenticación, se aislarían perfiles por operador y se destruirían cookies al terminar. El ingreso de credenciales, la resolución de MFA/CAPTCHA y el clic final «Enviar» serían humanos. La autorización de preparación no sustituye esa decisión.
+**Credenciales:**
+- Nunca están en el repositorio, el prompt, el modelo ni los logs.
+- Las ingresa el operador directamente en el navegador del portal, o se toman de un gestor corporativo de secretos fuera del alcance del modelo.
+- Se desactivan grabaciones en las pantallas de autenticación y las cookies se destruyen al terminar.
+
+**Reparto:**
+
+| Agente | Humano |
+|---|---|
+| Prepara los valores, navega a los formularios, rellena campos y adjunta soportes. | Ingresa credenciales, resuelve MFA y CAPTCHA, revisa la vista previa y pulsa «Enviar». |
 
 ## 6. Decisiones y trade-offs
 
-| Decisión | Alternativa descartada y motivo |
+| Decisión | Alternativa descartada y por qué |
 |---|---|
-| Respuestas construidas con referencias a evidencia | Prosa libre del LLM: permitiría introducir nombres, cuentas o estados sin fuente verificable. La selección puede ser poco pertinente, pero los valores presentados provienen de herramientas. |
-| Fachada pública y motor interno con UUID | Confiar en rutas y `confirmado` enviados por el modelo: permitiría descargar o usar artefactos ajenos y saltar confirmaciones. |
-| HTML/JavaScript sin framework | SPA con build adicional: no aporta una necesidad del reto y añade dependencias. El backend y las herramientas siguen en TypeScript. |
-| Documentos reconstruidos desde mapas JSON | Rellenar binarios originales: no fueron entregados. Excel conserva hojas y celdas del mapa; PDF conserva orden, etiqueta y valor, modalidad aceptada por el PRD. |
-| Exportación canónica y copias privadas de descarga | Sobrescribir el archivo de una sesión al preparar otra: los UUID privados mantienen las descargas aisladas. Las rutas `out/<caso>/` muestran la última exportación y pueden cambiar entre sesiones. |
-| Presupuesto reservado por bytes | Presupuestar solo cuando vuelve `usage`: no impediría peticiones fallidas o repetidas y permitiría superar el presupuesto antes de bloquear. |
-| Memoria y archivos locales | Base de datos y correo real: fuera de alcance del reto. No hay firma ni envío real. |
+| El modelo elige una intención de una lista cerrada; las herramientas se ejecutan en secuencias fijas. | **Tool calling libre** (el modelo decide qué herramienta llamar y con qué argumentos). Es lo que describe el PRD y la opción más flexible, pero abre la puerta a argumentos inventados (un mapeo alterado, `confirmado: true` sin pregunta). Elegimos control y trazabilidad; el costo es menos flexibilidad ante peticiones compuestas. Es la siguiente evolución natural: el contrato de herramientas y la puerta de confirmación ya lo soportan. |
+| Respuestas armadas con evidencia de herramientas. | **Prosa libre del modelo:** podría introducir nombres, cuentas o vigencias sin fuente. |
+| Puerta de confirmación en el servidor, por acción, caso y artefacto. | **Confiar en el `confirmado` que manda el modelo o el navegador:** permitiría saltarse la confirmación. |
+| Palabras clave cuando no hay clave LLM. | **Exigir clave para usar el chat:** la defensa y `demo.ts` no deberían depender de un proveedor externo. |
+| Chat como ventana modal sobre un flujo documental por botones. | **Solo chat:** para la tarea repetitiva de la analista, los botones son más rápidos; el chat cubre la conversación y la demo del PRD. |
+| Formularios reconstruidos desde los mapas JSON. | **Rellenar binarios originales:** no fueron entregados. El Excel respeta hoja y celda; el PDF respeta el orden. |
+| `FECHA_EVALUACION` visible y nunca futura. | **Editar vigencias en los fixtures:** los fixtures no se modifican, y una fecha futura serviría para ocultar vencimientos. |
+| HTML y JS sin framework en el front. | **SPA con build:** no aporta nada al reto y añade dependencias. |
 
-## 7. Supuestos y reglas implementadas
+## 7. Supuestos
 
-- Las equivalencias del glosario son exactas; no se introducen sinónimos inventados. Un campo sin equivalencia o valor es `faltante`.
-- NIT colombiano usado en EC/PE/PA/HN se marca `requiere_confirmacion`, confianza 0,7, nota «identificador extranjero» y equivalente RUC/RTN. Etiquetas fiscales ambiguas requieren revisión; coincidencias explícitas ordinarias tienen confianza 1.
-- Se conservan cuentas e identificaciones como texto. Los datos bancarios solo se escriben en campos pedidos por la plantilla y nunca se agregan al correo borrador.
-- Un soporte ausente, archivo faltante o vencido bloquea `listo_para_firma`. Un campo faltante no lo bloquea por sí solo, pero todos los faltantes, incluso opcionales, se muestran en el checklist. Requiere revisión humana, no aceptación legal automática.
-- El vencimiento se evalúa contra la fecha UTC de ejecución. El demo predeterminado usa hoy y limpia `out/` al iniciar. `--historico` permite evaluar cada solicitud a su fecha original y lo declara en la salida. No ejecutar el demo junto con un servidor cuyos documentos se quieran conservar.
-- `repositorio/` es admitido cuando existe. Los fixtures recibidos conservan su estructura y contenido originales para evitar alterar evidencia.
-- Los placeholders no prueban autenticidad, emisión reciente ni aceptación legal de soportes.
+- **Glosario:** las equivalencias se aplican por coincidencia exacta de etiqueta. Una etiqueta sin equivalencia o sin valor en el maestro es `faltante`; nunca se inventa.
+- **Identificador tributario (RN1):**
+  - En EC, PE, PA y HN el campo se llena con el NIT colombiano y queda `requiere_confirmacion` con confianza 0,7, la nota «identificador extranjero» y el equivalente del país (RUC o RTN).
+  - Las etiquetas ambiguas («Identificación tributaria») también requieren confirmación.
+  - Un mapeo explícito del glosario tiene confianza 1.
+- **Soportes (RN3):**
+  - Un soporte vencido, ausente del índice o sin archivo bloquea `listo_para_firma`. Un campo faltante no lo bloquea, pero aparece en el checklist.
+  - Un paquete bloqueado no se propone para envío.
+- **Fechas:** la vigencia se evalúa contra la fecha UTC de ejecución, o contra `FECHA_EVALUACION` si se define.
+- **Datos bancarios (RN2):** solo se escriben donde la plantilla los pide y nunca en `borrador-correo.md`.
+- **Repositorio maestro:** se admite tanto `fixtures/reto-01/repositorio/` (estructura del PRD) como la estructura entregada (`maestro.json` y `soportes/` en la raíz).
+- **Plantillas y demo:**
+  - Una plantilla corrupta, ausente o con un mapa inválido no detiene el caso: el mapeo devuelve el reporte de soportes y un aviso, y solo se bloquea el formulario.
+  - `out/` es efímero: `demo.ts` lo limpia al iniciar.
 
-## 8. Cobertura por historia y entrega
+## 8. Cobertura
 
-| Historia / componente | Estado | Evidencia y límite de producción |
+| Historia / requisito | Estado | Evidencia · qué falta para producción |
 |---|---|---|
-| HU-1: leer solicitud y plantilla | Hecho | País, cliente, formato, campos, revisiones y soportes; plantilla corrupta permite seguir leyendo el correo con advertencia. |
-| HU-2: mapear y reportar faltantes | Hecho | Fuente del maestro, tres estados, confianza y revisión tributaria; falta validación legal de equivalencias reales. |
-| HU-3: Excel/PDF | Hecho | Hojas/celdas del mapa y PDF ordenado; no hay binarios originales que preservar. |
-| HU-3: portal | Hecho para alcance P2 | Archivo copiable y declaración de formato no soportado; acceso real excluido. |
-| HU-4: paquete para revisión y firma | Hecho | Formulario, soportes disponibles, checklist, borrador de correo y ZIP. Sin simulación en la pantalla. La quinta herramienta original sigue en el demo técnico. |
-| Front conversacional del PRD original | Sustituido por instrucción posterior | Pantalla documental sin entrada de mensajes; cambio de alcance registrado explícitamente. |
-| HU-5: recuperación de errores | Hecho | Contratos controlados, timeout, fallos de plantilla, proveedor y auditoría; la sesión sigue disponible y puede preparar otra solicitud. |
-| API, logs, conocimiento, presupuestos | Hecho | Historial con usuario/herramientas, health sin clave, logs global y por caso, límites configurables. |
-| Bonus: módulo reutilizable | Hecho | `modulo/`, herramientas reexportadas y prompt/conocimiento generados; `module:check` evita divergencia. No importa servidor HTTP. |
-| URL pública | Pendiente de activación | Docker/Render preparados, requiere cuenta de hosting; la pantalla no necesita clave LLM. Conexión real del componente opcional sigue sin acreditar. |
+| HU-1 Leer la solicitud | Hecho | Campos, país, cliente, formato, soportes y equivalentes por país. |
+| HU-2 Mapear al maestro | Hecho | Tres estados con ruta en el maestro, glosario y confianza. Falta validación legal de equivalencias reales. |
+| HU-3 Excel (P0) y PDF (P1) | Hecho | Hoja y celda del mapa; PDF ordenado. Faltan las plantillas binarias originales del cliente. |
+| HU-3 Portal (P2) | Hecho (alcance P2) | «Formato no soportado» y `valores-portal.md`. Diseño en §5. |
+| HU-4 Paquete para firma | Hecho | Formulario, soportes, checklist presentes / vencidos / ausentes, borrador de correo, resumen en el chat, pregunta explícita y `ENVIO-SIMULADO.md` tras confirmación. |
+| HU-5 Manejo de errores | Hecho | `{ ok, data }` / `{ ok: false, error }`, nunca lanza. Una plantilla corrupta conserva el reporte de soportes. Caso inexistente y formato no soportado con mensaje claro. |
+| Front de chat (§6.1) | Hecho | Modal con historial, «pensando», tarjetas de herramientas y confirmación resaltada. |
+| Ciclo del agente con LLM (§6.1, CA1–CA5) | Parcial | Tope, confirmación, log y errores claros. El modelo elige intención y evidencia; no hace tool calling libre (ver §6). Falta probarlo con una clave real. |
+| API (§6.4) | Hecho | `/api/chat`, `/api/sessions/:id`, `/api/health`. |
+| `demo.ts` sin modelo | Hecho | Cuatro casos, cinco herramientas, sin clave. |
+| Link público (§9.3) | Pendiente | Docker y Render listos. Falta crear el servicio con una cuenta de hosting. |
+| Bonus `modulo/` | Hecho | Prompt, conocimiento y herramientas generados desde las mismas fuentes; `module:check` evita que diverjan. |
+
+Para producción también falta: autenticación y cuotas por usuario, persistencia cifrada, contadores de gasto compartidos y plantillas reales del cliente.
 
 ## 9. Uso de IA
 
-Se usó Codex para inspección de adjuntos, definición de contratos, implementación, pruebas, revisión del PRD y documentación. En la actualización documental se separó el controlador del agente conversacional, se reemplazó la UI y se adaptaron E2E a las tareas administrativas. Se descartó añadir una integración real de correo porque es un no-objetivo del PRD y no había cuenta autorizada. La herramienta de imágenes se usó para preparar el fondo a partir de la referencia visual; es una versión reprocesada, descrita en `docs/DISENO.md`.
+- **Codex.** Inspección de los fixtures, contratos zod, motor de herramientas, pruebas, primera versión del front y documentación.
+- **Claude Code.** Revisión del cumplimiento contra el PRD y la estructura de §6.5, y además:
+  - mover el servidor a `src/server.ts` y el front a `web/`;
+  - recuperar el chat como modal;
+  - hacer que el guion de §11 funcione sin clave (palabras clave y encadenado de paquete y envío);
+  - `FECHA_EVALUACION`;
+  - reporte parcial con plantilla corrupta y checklist en tres secciones;
+  - pruebas unitarias, HTTP y E2E del guion;
+  - este documento y el README.
+- **Herramienta de imágenes.** Fondo reprocesado a partir de una referencia visual (`docs/DISENO.md`).
 
-Se descartó permitir que el LLM devuelva valores o prosa libre del proveedor: se implementó selección de evidencia. También se corrigieron decisiones iniciales al recibir el PRD completo: bloqueo por campos faltantes, ausencia de archivos de cierre, estados del mapeo e interfaz de herramientas. El historial Git permite revisar esos cambios. No se afirma revisión humana línea por línea: la guía `EXPLICACION_CODIGO.md` ayuda a preparar esa defensa y las pruebas ejercitan los comportamientos críticos.
+**Propuestas descartadas:**
+- Dejar que el modelo redacte respuestas o devuelva valores: lo reemplazamos por selección de evidencia.
+- Integrar correo real: es un no-objetivo del PRD.
+- Desplazar la vigencia de los fixtures para la demo: se prefirió una fecha simulada, visible y validada.
+- Tool calling libre sin poder probarlo con una clave: queda documentado como trade-off.
 
-El LLM del aplicativo, cuando se configure, clasifica intención y selecciona evidencia. No firma, ejecuta shell, actualiza fixtures ni autoriza acciones.
+El historial de Git muestra cada cambio. `EXPLICACION_CODIGO.md` sirve para preparar la explicación línea a línea.
 
-## 10. Riesgos y mitigaciones de producción
+## 10. Riesgos de producción y mitigación
 
-- Publicación con clave propia: limitar gasto también en OpenAI; autenticación, cuotas por usuario y contadores compartidos antes de múltiples réplicas.
-- Persistencia: memoria pierde sesiones al reiniciar; usar almacenamiento cifrado, retención, backups y logs centralizados. Las exportaciones canónicas son compartidas; las descargas de sesión usan copias privadas.
-- Datos sensibles: minimización antes de enviarlos al proveedor, acuerdos de tratamiento, permisos por empresa, cifrado y políticas de retención. Hoy los datos son ficticios.
-- Archivos y plantillas reales: análisis de formatos, límites de tamaño, revisión del contenido y pruebas con documentos representativos.
-- Firma y validez legal: mantener revisión humana y verificar equivalencias y vigencias con el dueño del dato.
-- Despliegue gratis: puede dormir o borrar archivos. Mantener el servicio activo para la defensa y descargar el paquete. No se comprobó el arranque en menos de dos minutos en una máquina limpia.
-
-La evidencia ejecutada está en `docs/VALIDACION.md`, la configuración en `README_LLM.md`, el despliegue en `docs/DESPLIEGUE.md` y la explicación completa del código y su evolución en `EXPLICACION_CODIGO.md`.
+| Riesgo | Mitigación |
+|---|---|
+| El modelo «completa» un campo faltante. | Las herramientas son la única fuente de valores. El modelo solo elige intención o evidencia, y el prompt prohíbe valores fuera del mapeo. |
+| Gasto descontrolado de la clave. | Topes por turno, sesión y día, límite por IP y tope de gasto en la cuenta del proveedor. Con varias réplicas, contadores centralizados. |
+| Datos sensibles (cuentas, identificaciones). | Datos ficticios hoy. En producción: minimizar lo que va al proveedor, acuerdos de tratamiento, cifrado, retención y permisos por empresa. Los logs ya excluyen valores bancarios y claves. |
+| Sesiones y archivos en memoria y disco local. | Se pierden al reiniciar (el plan gratuito duerme). Usar almacenamiento persistente y cifrado, y backups. |
+| Plantillas reales peores que los fixtures. | Validación de formatos, límites de tamaño, pruebas con documentos representativos y el reporte parcial ya implementado. |
+| Validez legal de equivalencias y vigencias. | Revisión humana obligatoria y un dueño del dato para el maestro y los soportes. |
+| Portales con CAPTCHA o MFA. | El humano opera el portal; el agente prepara los valores (§5). |
 
 ## Dependencias justificadas
 
 | Dependencia | Necesidad |
 |---|---|
-| Zod | Validar entradas, salidas, fixtures e interfaces de herramientas. |
-| zod-to-json-schema | Derivar contratos del modelo desde los mismos esquemas Zod, sin mantener otra definición manual. |
-| ExcelJS | Crear y verificar libros XLSX con hojas/celdas del mapa. |
-| pdf-lib | PDF generado con etiquetas y valores ordenados; no depende de una plantilla binaria ausente. |
-| fflate | Crear y comprobar el ZIP de formulario, soportes y documentación. |
-| dotenv | Leer configuración local de backend desde `.env`. |
-| TypeScript, tipos Node y tsx | Tipado estricto, compilación y ejecución local de fuentes/scripts. |
-| Playwright | E2E de navegador y descargas contra backend real. |
-| Bun local | Verificar el comando de demo exigido, sin obligar al usuario a instalarlo globalmente. |
+| zod | Argumentos, salidas, fixtures y contratos de herramientas (obligatorio por el PRD). |
+| zod-to-json-schema | Derivar los esquemas que ve el modelo desde los mismos esquemas zod. |
+| ExcelJS | Escribir el XLSX respetando hoja y celda. |
+| pdf-lib | Generar el PDF con etiqueta y valor en orden. |
+| fflate | ZIP del paquete. |
+| dotenv | Leer `.env` en el backend. |
+| TypeScript, tipos de Node, tsx | Tipado estricto y ejecución de fuentes. |
+| Playwright | Pruebas E2E del chat y del flujo documental. |
+| Bun (local) | Verificar el comando de demo del PRD sin instalarlo globalmente. |
 
-`pnpm-workspace.yaml` fija `exceljs>uuid` en 11.1.1 para sustituir una versión transitiva vulnerable manteniendo el uso CommonJS de ExcelJS. El lockfile conserva integridad y versiones. La auditoría actual de producción no encontró vulnerabilidades conocidas.
+`pnpm-workspace.yaml` fija `exceljs>uuid` en 11.1.1 para sustituir una versión transitiva vulnerable.

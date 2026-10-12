@@ -1,10 +1,10 @@
-# Cambio de alcance: preparación documental sin chatbot
+# Flujo documental (complemento del chat)
 
-La instrucción posterior del usuario sustituye la experiencia conversacional por una pantalla que resuelve la transcripción y preparación del registro como proveedor. Este documento complementa el PRD original, que se conserva sin editar. El PRD sí exigía chat, historial, entrada libre y ciclo LLM; la nueva interfaz deliberadamente cambia ese requisito a petición del usuario. Las herramientas, reglas de datos y confirmaciones se conservan.
+Además del chat que exige el PRD (ventana modal, ver README), la pantalla principal ofrece un flujo guiado por botones para la tarea repetitiva de la analista. Usa las mismas herramientas, reglas de datos y confirmaciones que el chat. Este documento describe ese flujo; el PRD original se conserva sin editar.
 
 ## Resultado esperado
 
-Una solicitud recibida en la entrada de fixtures produce un formulario Excel/PDF con los valores que existen en el maestro y un paquete documental para revisión/firma, con pendientes explícitos. El flujo nunca firma, envía ni simula envío. Para portal produce valores copiables, sin conexión al sitio. No incluye integración real de correo ni extracción automática de plantillas binarias arbitrarias.
+Una solicitud recibida en la entrada de fixtures produce un formulario Excel/PDF con los valores que existen en el maestro y un paquete documental para revisión/firma, con pendientes explícitos. Este flujo nunca firma, envía ni simula envío; la simulación del envío está en el chat, tras confirmación explícita. Para portal produce valores copiables, sin conexión al sitio. No incluye integración real de correo ni extracción automática de plantillas binarias arbitrarias.
 
 ## Operaciones y estados
 
