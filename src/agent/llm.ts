@@ -27,6 +27,14 @@ export function keywordIntent(text:string):Intent|null {
   const t=text.toLocaleLowerCase('es');
   return keywordRules.find(([pattern])=>pattern.test(t))?.[1]??null;
 }
+// System prompt del ciclo con herramientas: comportamiento (agent/prompt.md) + conocimiento del proceso.
+export async function agentSystemPrompt():Promise<string> {
+  const [prompt,knowledge]=await Promise.all([
+   readFile(new URL('../../agent/prompt.md',import.meta.url),'utf8'),
+   readFile(new URL('../knowledge/registro-proveedor.md',import.meta.url),'utf8')
+  ]);
+  return `${prompt}\n\n---\n\n${knowledge}`;
+}
 async function requestModel(payload:unknown,name:string,schema:unknown,runtime:ModelRuntime):Promise<unknown> {
  try {
   const [prompt,knowledge]=await Promise.all([

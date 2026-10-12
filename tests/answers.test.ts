@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { contracts } from '../src/contracts/proveedor.js';
 import { type Evidence, collectEvidence, renderAnswer } from '../src/agent/answers.js';
 import { createSession, type ChatEvent } from '../src/agent/orchestrator.js';
+import { AnthropicAdapter } from '../src/llm/anthropic.js';
+import type { LlmAdapter } from '../src/llm/adapter.js';
+// Modo intención + evidencia: un adaptador sin `conversar` (como el de OpenAI) no usa el ciclo con herramientas.
+const intentOnly=():LlmAdapter=>{const adapter=new AnthropicAdapter();return {provider:adapter.provider,model:adapter.model,enviar:adapter.enviar.bind(adapter)};};
 
 test('Respuestas solo admiten referencias válidas, nunca prosa ni valores inventados',()=>{
  const evidence=collectEvidence([{name:'herramienta',data:{cliente:'Cliente real',faltantes:['RUC'],campos:[{etiqueta:'Cuenta',valor:'00123',estado:'mapeado',fuente:'maestro.json'}]}}]);
@@ -27,7 +31,7 @@ test('Consultas LLM leen herramientas, responden con evidencia, cancelan permiso
   return new Response(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'text',text:JSON.stringify(answer)}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}),{status:200,headers:{'Content-Type':'application/json'}});
  };
  try {
-  const session=createSession({today:()=> '2026-08-25'});
+  const session=createSession({today:()=> '2026-08-25',llmAdapter:intentOnly()});
   const events:ChatEvent[]=[];
   const turn=async(id:string,text:string)=>{events.length=0;await session.chat(id,text,e=>events.push(e));return [...events];};
   await turn('co-industrias-delta','preparar');

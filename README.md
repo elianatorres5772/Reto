@@ -14,7 +14,7 @@ pnpm install --frozen-lockfile && pnpm run dev
 
 Abre `http://localhost:3000` y pulsa **Conversar con el agente**. Alternativa con Docker: `docker compose up --build` (crea antes `.env` a partir de `.env.example`).
 
-No hace falta una clave LLM: sin clave, el agente entiende órdenes en lenguaje natural por palabras clave y todas las herramientas funcionan.
+Con una clave de Claude (`LLM_API_KEY`), Claude conduce cada turno con tool calling: decide qué herramientas llamar y redacta el resumen. No hace falta una clave para probarlo: sin clave, el agente entiende órdenes en lenguaje natural por palabras clave y todas las herramientas funcionan.
 
 ## Variables de entorno
 

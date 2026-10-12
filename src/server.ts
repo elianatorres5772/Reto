@@ -49,12 +49,12 @@ export const server=createServer(async(req,res)=>{
     if(!originAllowed(req)) {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
     if(req.method==='POST'&&!rateAllowed(req)){json(res,429,{ok:false,error:'Demasiadas solicitudes. Espera un minuto.'});return;}
     const url=new URL(req.url??'/','http://localhost');
-    if(req.method==='GET' && ['/','/registration.js','/chat.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
+    if(req.method==='GET' && ['/','/registration.js','/chat.js','/styles.css','/assets/assistant.svg'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
-      res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
+      res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
     }
-    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:llmProvider(),model:llmModel(),configured:!!process.env.LLM_API_KEY,fecha_evaluacion:today?.()??null});return;}
+    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?(llmProvider()==='anthropic'?'llm-tools':'llm-intent'):'deterministic',provider:llmProvider(),model:llmModel(),configured:!!process.env.LLM_API_KEY,fecha_evaluacion:today?.()??null});return;}
     if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);

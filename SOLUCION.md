@@ -12,7 +12,7 @@ flowchart LR
     Docs[web/ · flujo documental<br/>botones] -->|/api/workflow/*| Server
     Server --> Agent[src/agent/<br/>ciclo del agente + puerta de confirmación]
     Server --> Workflow[src/workflow/<br/>flujo documental]
-    Agent -->|intención / selección de evidencia| LLM[src/llm/adapter.ts → anthropic.ts<br/>Claude]
+    Agent -->|tool calling| LLM[src/llm/adapter.ts → anthropic.ts<br/>Claude]
     Agent --> Tools[src/tools/proveedor.ts<br/>5 herramientas zod]
     Workflow --> Tools
     Tools --> Engine[src/tools/engine.ts<br/>mapeo, reglas, Excel/PDF/ZIP]
@@ -31,23 +31,35 @@ Las herramientas no importan el servidor: `demo.ts` y `modulo/` las usan directa
 
 ## 3. Ciclo del agente
 
-Cada mensaje del chat ejecuta un turno en `src/agent/orchestrator.ts`:
+Cada mensaje del chat ejecuta un turno en `src/agent/orchestrator.ts`. Con `LLM_API_KEY` y Claude, **Claude conduce el turno con tool calling**:
 
-1. **Caso.** Si el mensaje menciona un caso (`ec-corp-andina`), el agente lo lee y cambia a él. Cambiar de caso descarta cualquier confirmación pendiente.
-2. **Intención.** Con `LLM_API_KEY`, el modelo recibe el prompt, el conocimiento y los esquemas de las herramientas, y devuelve **solo** una intención de una lista cerrada (`leer`, `mapear`, `formulario`, `preparar`, `paquete`, `simular`, `resumen`, `ayuda`, `consulta`), validada con zod. Sin clave, o si el modelo falla, se usan palabras clave ordenadas («procesa… no envíes nada» es `preparar`, no `simular`).
-3. **Herramientas.** Cada intención ejecuta una secuencia fija de herramientas. Por ejemplo, `preparar` llama a leer, mapear y generar. Cada llamada se emite al chat (`tool_call` con argumentos y `tool_result`) y queda en `out/log.jsonl` y `out/<caso>/log.jsonl` (CA4).
-4. **Respuesta.** El resumen visible se construye con los datos que devolvieron las herramientas. En una `consulta`, el modelo solo puede elegir identificadores de evidencia entre los resultados de las herramientas; la app arma el texto con esas etiquetas, valores y fuentes. El modelo nunca escribe valores (CA2).
-5. **Tope.** Cada llamada a herramienta o al modelo consume una iteración. Al llegar a `AGENT_MAX_ITERATIONS` (25), el turno se corta, se conserva lo obtenido y se informa (CA1). Errores de herramientas o del proveedor se muestran en lenguaje claro y la sesión sigue viva (CA5).
+1. **Mensaje.** El servidor agrega a la conversación el mensaje de la usuaria con el caso activo. El system prompt es `agent/prompt.md` más `src/knowledge/registro-proveedor.md`.
+2. **Modelo.** Claude recibe las cinco herramientas (`proveedor_<export>`) y decide qué llamar. Cada `tool_use` se valida con zod antes de ejecutarse. Argumentos inválidos o una herramienta desconocida vuelven al modelo como error (`is_error`).
+3. **Herramientas.**
+   - El servidor completa `campos` y `mapeo` con los resultados de la sesión, así que el modelo no puede alterar un mapeo.
+   - El modelo recibe un resumen con etiquetas, estados, fuentes y rutas, sin valores del maestro (CA2). Así no puede afirmar un número de cuenta que nunca vio.
+   - Cada llamada se muestra en el chat (nombre, argumentos y resultado) y queda en `out/log.jsonl` y `out/<caso>/log.jsonl` (CA4).
+4. **Respuesta.** Cuando Claude deja de pedir herramientas, su texto es el resumen del turno: ruta, campos llenos y faltantes, `listo_para_firma`, soportes a actualizar y una pregunta.
+5. **Tope.** Cada llamada al modelo o a una herramienta consume una iteración. Al llegar a `AGENT_MAX_ITERATIONS` (25), el turno se corta, se conserva lo obtenido y cada `tool_use` pendiente recibe un resultado para que la conversación siga siendo válida (CA1). La conversación solo se agrega (append-only), para conservar el razonamiento del modelo entre llamadas.
+6. **Errores (CA5).** Un error del proveedor (timeout, clave rechazada, límite de solicitudes) se muestra en el chat en lenguaje claro. Si ocurre en la primera llamada, el turno continúa con las palabras clave, y la sesión no muere.
 
-**Confirmación humana (CA3, RN4).** `src/agent/confirmation.ts` guarda una sola pregunta pendiente, ligada a la acción, el caso y el artefacto (formulario o paquete). El permiso solo se concede si el **siguiente** mensaje es afirmativo («sí», «confirmo»…), y se consume una vez. Un mensaje intermedio, una cita («mi jefe dijo "sí"») o un cambio de caso lo anulan. El motor de herramientas vuelve a verificar el permiso antes de armar el paquete o simular el envío, así que ni el modelo ni el navegador pueden saltárselo. El front resalta la pregunta pendiente con botones Sí / No.
+**Confirmación humana (CA3, RN4).** `proveedor_armar_paquete` y `proveedor_simular_envio` tienen efecto, así que cuando Claude las pide no se ejecutan:
+- El servidor registra una pregunta explícita, ligada a la acción, el caso y el artefacto, y termina el turno con el aviso resaltado en el chat.
+- Solo si el **siguiente** mensaje es afirmativo («sí», «confirmo»…), el servidor ejecuta la acción y se lo informa al modelo en su próximo turno.
+- Un mensaje intermedio, una cita o un cambio de caso anulan la pregunta.
+- El motor de herramientas vuelve a verificar el permiso (`src/agent/confirmation.ts`), y el `confirmado` que mande el modelo no autoriza nada.
+- Un paquete que no está listo para firma nunca se propone para envío.
 
-Secuencia del envío: «procesa…» genera el formulario y pregunta por el paquete. «envía» (sin paquete) pide confirmar el paquete. El «sí» lo arma; si `listo_para_firma`, pregunta por el envío, y el segundo «sí» escribe solo `ENVIO-SIMULADO.md`. Si el paquete está bloqueado, el agente no propone el envío y dice qué soportes actualizar.
+**Sin clave, o con un proveedor sin tool calling (OpenAI):** el turno usa el modo de intención. Las palabras clave o el modelo eligen una intención de una lista cerrada (`preparar`, `simular`…), que ejecuta una secuencia fija de herramientas. Para consultas libres, el modelo solo elige evidencia de los resultados. Las mismas confirmaciones aplican.
+
+Secuencia del envío: «procesa…» genera el formulario y pregunta por el paquete. «envía» sin paquete pide confirmar el paquete. El «sí» lo arma; si `listo_para_firma`, pregunta por el envío, y el segundo «sí» escribe solo `ENVIO-SIMULADO.md`.
 
 ## 4. Elección del modelo
 
 - **Proveedor y modelo:** Anthropic, Claude Opus 5.5 (`claude-opus-5-5`), con el SDK oficial `@anthropic-ai/sdk` en [src/llm/anthropic.ts](src/llm/anthropic.ts).
   - **Salida JSON con esquema** (`output_config.format`, tipo `json_schema`): la intención y la selección de evidencia siempre cumplen el esquema, que luego se valida otra vez con zod.
-  - **Esfuerzo `low`:** la tarea es corta (clasificar y elegir evidencia).
+  - **Esfuerzo:** `medium` en el ciclo con herramientas y `low` en el modo de intención (tarea corta).
+  - **Caché de prompts:** el prefijo que se repite en cada llamada del ciclo (herramientas, prompt, conocimiento y turnos previos) se cachea con `cache_control`.
   - **Respaldo ante rechazos de seguridad** con `fallbacks: "default"`.
   - Elegimos el modelo más capaz por defecto. Para bajar costo se puede cambiar `LLM_MODEL` a `claude-haiku-5-5` sin tocar código; no se midió si la calidad se mantiene.
 - **Cambio de proveedor:** `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor, y `LLM_PROVIDER` elige el adaptador al crear la sesión, sin tocar el ciclo. Están implementados Anthropic (por defecto) y OpenAI (`gpt-4.1-mini`).
@@ -59,7 +71,7 @@ Secuencia del envío: «procesa…» genera el formulario y pregunta por el paqu
 - **Costo estimado por caso:** se estima, no se midió, porque no hubo clave disponible durante la construcción.
   - Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`.
   - Un caso típico hace una clasificación por mensaje con frase libre, más una selección de evidencia por consulta.
-  - Cada llamada envía el prompt, el conocimiento y los esquemas de las cinco herramientas. Con 20.000 tokens de entrada y 1.500 de salida (razonamiento incluido) por caso, a las tarifas de Claude Opus 5.5 (USD 4 / USD 20 por millón), da **≈ USD 0,11 por caso**. Con Claude Haiku 5.5 (USD 0,10 / USD 0,50) serían ≈ USD 0,003. Hay que verificar las tarifas vigentes antes de publicar.
+  - Procesar un caso con tool calling son unas 4 o 5 llamadas al modelo (leer, mapear, generar y resumen), y cada una reenvía la conversación. Estimación: ≈ 60.000 tokens de entrada (en su mayoría lecturas de caché, a 0,1× la tarifa) y ≈ 3.000 de salida, razonamiento incluido. A las tarifas de Claude Opus 5.5 (USD 4 / USD 20 por millón; caché USD 0,20) da **≈ USD 0,10–0,30 por caso**, según cuánto aproveche la caché. Con Claude Haiku 5.5 sería menos de USD 0,01. Hay que verificar las tarifas vigentes antes de publicar.
   - Las órdenes reconocidas por palabras clave y el flujo documental no consumen tokens.
 
 ## 5. Diseño del portal web (§7.4)
@@ -90,7 +102,7 @@ El agente solo **rellenaría campos y adjuntaría soportes**, con una vista prev
 
 | Decisión | Alternativa descartada y por qué |
 |---|---|
-| El modelo elige una intención de una lista cerrada; las herramientas se ejecutan en secuencias fijas. | **Tool calling libre** (el modelo decide qué herramienta llamar y con qué argumentos). Es lo que describe el PRD y la opción más flexible, pero abre la puerta a argumentos inventados (un mapeo alterado, `confirmado: true` sin pregunta). Elegimos control y trazabilidad; el costo es menos flexibilidad ante peticiones compuestas. Es la siguiente evolución natural: el contrato de herramientas y la puerta de confirmación ya lo soportan. |
+| Claude conduce el turno con tool calling, pero el servidor completa `campos` y `mapeo` y ejecuta las acciones con efecto solo tras la confirmación. | **El modelo pasa el mapeo completo como argumento** (el contrato literal de §6.2): costaría miles de tokens por llamada y permitiría alterar valores. **Secuencias fijas sin tool calling** (la versión anterior): más barata y predecible, pero el modelo no decide el flujo. Se conserva como modo sin clave. |
 | Respuestas armadas con evidencia de herramientas. | **Prosa libre del modelo:** podría introducir nombres, cuentas o vigencias sin fuente. |
 | Puerta de confirmación en el servidor, por acción, caso y artefacto. | **Confiar en el `confirmado` que manda el modelo o el navegador:** permitiría saltarse la confirmación. |
 | Palabras clave cuando no hay clave LLM. | **Exigir clave para usar el chat:** la defensa y `demo.ts` no deberían depender de un proveedor externo. |
@@ -127,7 +139,7 @@ El agente solo **rellenaría campos y adjuntaría soportes**, con una vista prev
 | HU-4 Paquete para firma | Hecho | Formulario, soportes, checklist presentes / vencidos / ausentes, borrador de correo, resumen en el chat, pregunta explícita y `ENVIO-SIMULADO.md` tras confirmación. |
 | HU-5 Manejo de errores | Hecho | `{ ok, data }` / `{ ok: false, error }`, nunca lanza. Una plantilla corrupta conserva el reporte de soportes. Caso inexistente y formato no soportado con mensaje claro. |
 | Front de chat (§6.1) | Hecho | Modal con historial, «pensando», tarjetas de herramientas y confirmación resaltada. |
-| Ciclo del agente con LLM (§6.1, CA1–CA5) | Parcial | Tope, confirmación, log y errores claros. El modelo elige intención y evidencia; no hace tool calling libre (ver §6). Falta probarlo con una clave real. |
+| Ciclo del agente con LLM (§6.1, CA1–CA5) | Hecho | Claude con tool calling: tope de 25 iteraciones, confirmación en el servidor, log, errores claros y resultados resumidos sin valores sensibles. Probado con un modelo simulado en el formato de la API (`tests/agent-loop.test.ts`, `tests/prd.test.ts`); falta una corrida con clave real. |
 | API (§6.4) | Hecho | `/api/chat`, `/api/sessions/:id`, `/api/health`. |
 | `demo.ts` sin modelo | Hecho | Cuatro casos, cinco herramientas, sin clave. |
 | Link público (§9.3) | Pendiente | Docker y Render listos. Falta crear el servicio con una cuenta de hosting. |
@@ -144,6 +156,8 @@ Para producción también falta: autenticación y cuotas por usuario, persistenc
   - hacer que el guion de §11 funcione sin clave (palabras clave y encadenado de paquete y envío);
   - `FECHA_EVALUACION`;
   - el adaptador de Claude (`src/llm/anthropic.ts`) con el SDK oficial y salida JSON con esquema;
+  - el ciclo con tool calling (`src/agent/loop.ts` y `orchestrator.ts`) y sus pruebas;
+  - la paleta #6dfd8c y la cabecera sin imagen de fondo;
   - reporte parcial con plantilla corrupta y checklist en tres secciones;
   - pruebas unitarias, HTTP y E2E del guion;
   - este documento y el README.
@@ -153,7 +167,7 @@ Para producción también falta: autenticación y cuotas por usuario, persistenc
 - Dejar que el modelo redacte respuestas o devuelva valores: lo reemplazamos por selección de evidencia.
 - Integrar correo real: es un no-objetivo del PRD.
 - Desplazar la vigencia de los fixtures para la demo: se prefirió una fecha simulada, visible y validada.
-- Tool calling libre sin poder probarlo con una clave: queda documentado como trade-off.
+- Que el modelo pase `campos` y `mapeo` completos como argumentos: el servidor los completa desde la sesión.
 
 El historial de Git muestra cada cambio. `EXPLICACION_CODIGO.md` sirve para preparar la explicación línea a línea.
 

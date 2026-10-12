@@ -120,3 +120,24 @@ test('Adaptador Anthropic: salida JSON con esquema, timeout y clave rechazada si
   assert.equal(slow.ok,false);if(!slow.ok)assert.equal(slow.error.code,'TIMEOUT');assert.ok(!JSON.stringify(slow).includes('secret-fake'));
  } finally {globalThis.fetch=original;}
 });
+test('Adaptador Anthropic: ciclo con herramientas en formato de la API y turno del asistente reenviado sin cambios',async()=>{
+ const original=globalThis.fetch;
+ try {
+  const captured:{body?:{messages:{role:string;content:{type:string;tool_use_id?:string;is_error?:boolean;text?:string}[]}[];tool_choice:{type:string};cache_control:{type:string};tools:{name:string;input_schema:{type:string}}[]}}={};
+  globalThis.fetch=async(_url,init)=>{captured.body=JSON.parse(String(init?.body));return new Response(JSON.stringify({id:'msg_2',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'thinking',thinking:'',signature:'sig'},{type:'text',text:'Mapeo los campos.'},{type:'tool_use',id:'toolu_2',name:'proveedor_mapear_campos',input:{caso:'co-industrias-delta'}}],stop_reason:'tool_use',stop_sequence:null,usage:{input_tokens:50,output_tokens:9}}),{status:200,headers:{'Content-Type':'application/json'}});};
+  const previous=[{type:'thinking',thinking:'',signature:'sig-1'},{type:'tool_use',id:'toolu_1',name:'proveedor_leer_solicitud',input:{caso:'co-industrias-delta'}}];
+  const reply=await new AnthropicAdapter('claude-opus-5-5','secret-fake').conversar('reglas',[
+   {role:'user',text:'Procesa el caso'},
+   {role:'assistant',text:'',toolCalls:[{id:'toolu_1',name:'proveedor_leer_solicitud',input:{caso:'co-industrias-delta'}}],raw:previous},
+   {role:'user',toolResults:[{id:'toolu_1',content:'{"ok":true}',isError:false}]}
+  ],[{name:'proveedor_mapear_campos',description:'Mapea',parameters:{type:'object',properties:{caso:{type:'string'}},required:['caso']}}],{maxOutputTokens:4000,timeoutMs:5000});
+  assert.ok(reply.ok);if(!reply.ok)return;
+  assert.equal(reply.data.stop,'tool_use');assert.equal(reply.data.text,'Mapeo los campos.');
+  assert.deepEqual(reply.data.toolCalls,[{id:'toolu_2',name:'proveedor_mapear_campos',input:{caso:'co-industrias-delta'}}]);
+  const sent=captured.body;assert.ok(sent);
+  assert.deepEqual(sent.messages.map(m=>m.role),['user','assistant','user']);
+  assert.deepEqual(sent.messages[1]!.content,previous);
+  assert.deepEqual(sent.messages[2]!.content,[{type:'tool_result',tool_use_id:'toolu_1',content:'{"ok":true}',is_error:false}]);
+  assert.equal(sent.tool_choice.type,'auto');assert.equal(sent.cache_control.type,'ephemeral');assert.equal(sent.tools[0]!.input_schema.type,'object');
+ } finally {globalThis.fetch=original;}
+});
