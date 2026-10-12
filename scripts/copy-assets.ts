@@ -1,4 +1,3 @@
 import { cp, mkdir } from 'node:fs/promises';
 await mkdir('dist',{recursive:true});
-await cp('src/web','dist/web',{recursive:true});
 await cp('src/knowledge','dist/knowledge',{recursive:true});

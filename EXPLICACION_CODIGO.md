@@ -55,8 +55,8 @@ src/agent/llm.ts                 Intenciones y consultas del agente
 src/llm/adapter.ts               Interfaz independiente del proveedor
 src/llm/openai.ts                Peticiones a OpenAI
 src/llm/runtime.ts               Presupuestos y configuración del modelo
-src/server/index.ts              API, sesiones y recursos estáticos
-src/web/                        HTML, CSS, JavaScript y recursos locales
+src/server.ts              API, sesiones y recursos estáticos
+web/                        HTML, CSS, JavaScript y recursos locales
 demo.ts                         Verificación sin LLM
 scripts/                        Build de assets y módulo reutilizable
 modulo/                         Integración con otras plataformas
@@ -202,7 +202,7 @@ En `src/llm/runtime.ts`, `modelLimits` lee límites numéricos con valores segur
 
 El contador diario no se comparte entre réplicas y se pierde al reiniciar. El hosting y OpenAI deben tener límites adicionales si el aplicativo se usa en producción.
 
-## 12. Servidor: `src/server/index.ts`
+## 12. Servidor: `src/server.ts`
 
 `dotenv/config` carga `.env` al iniciar. El servidor crea un catálogo y un mapa de sesiones con hora del último acceso. No imprime el entorno ni la clave.
 
@@ -219,7 +219,7 @@ La API usa `X-Session-Id` como token de demo, no un sistema corporativo de auten
 
 ## 13. Frontend: HTML, CSS, JavaScript y assets
 
-`src/web/index.html` define una pantalla documental: lista de solicitudes, correo, progreso, tablas de campos y soportes, descargas, pregunta de autorización y entrega al representante legal. No tiene historial ni entrada de mensajes.
+`web/index.html` define una pantalla documental: lista de solicitudes, correo, progreso, tablas de campos y soportes, descargas, pregunta de autorización y entrega al representante legal. No tiene historial ni entrada de mensajes.
 
 `styles.css` conserva tonos verde manzana y el fondo local de referencia como cabecera. Define columnas de escritorio, tarjetas de revisión, tablas con desplazamiento propio, colores de pendientes y diseño móvil sin desbordamiento. Los controles tienen foco visible y las tablas incluyen encabezados/captions.
 
@@ -318,10 +318,10 @@ La solicitud posterior del usuario modifica el requisito de chat del PRD origina
 |---|---|
 | `src/contracts/workflow.ts` | Entradas select/prepare/confirm, estado del proceso y eventos NDJSON. |
 | `src/workflow/registration.ts` | Secuencia de herramientas, progreso, permiso específico, gestión de errores y cierre documental. |
-| `src/server/index.ts` | Rutas `/api/workflow/*`, sesión que contiene controlador documental y componente anterior, descarga por registro de artefactos de la misma sesión. |
-| `src/web/index.html` | Solicitudes, correo, tablas de campos/soportes, descargas, autorización y entrega humana. |
-| `src/web/registration.js` | Interacciones de trabajo, representación segura con textContent y recuperación de estado tras interrupción. |
-| `src/web/styles.css` | Diseño de escritorio/móvil verde manzana, con tablas desplazables y controles enfocados. |
+| `src/server.ts` | Rutas `/api/workflow/*`, sesión que contiene controlador documental y componente anterior, descarga por registro de artefactos de la misma sesión. |
+| `web/index.html` | Solicitudes, correo, tablas de campos/soportes, descargas, autorización y entrega humana. |
+| `web/registration.js` | Interacciones de trabajo, representación segura con textContent y recuperación de estado tras interrupción. |
+| `web/styles.css` | Diseño de escritorio/móvil verde manzana, con tablas desplazables y controles enfocados. |
 | `tests/workflow.test.ts` | Preparación, ZIP sin simulación, permisos falsos/cancelados, pendientes y recuperación ante plantilla corrupta. |
 | `tests/e2e/helpers.ts` | Navegador protegido, acciones documentales y validación del estado Zod. |
 | `tests/e2e/proveedor.spec.ts` | 12 recorridos del panel, descargas Excel/PDF/ZIP, permisos, soportes, aislamiento, interrupción y móvil. |

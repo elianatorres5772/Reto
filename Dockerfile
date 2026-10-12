@@ -25,9 +25,10 @@ RUN --mount=type=secret,id=npm_proxy --mount=type=secret,id=corporate_ca \
     pnpm install --prod --frozen-lockfile
 COPY --from=build /app/dist ./dist
 COPY agent ./agent
+COPY web ./web
 COPY fixtures ./fixtures
-RUN chmod -R a+rX dist agent fixtures && chmod a+r package.json pnpm-lock.yaml pnpm-workspace.yaml && mkdir -p out && chown node:node out
+RUN chmod -R a+rX dist agent web fixtures && chmod a+r package.json pnpm-lock.yaml pnpm-workspace.yaml && mkdir -p out && chown node:node out
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/server/index.js"]
+CMD ["node", "dist/server.js"]

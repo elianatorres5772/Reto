@@ -8,11 +8,11 @@ El apartado siguiente documenta el origen de los recursos y el diseño conversac
 
 La interfaz toma como referencia visual la imagen suministrada por el usuario: paleta verde manzana claro con transparencias, fondo fotográfico, marco translúcido, avatar de asistente, sombras suaves y burbujas redondeadas. La marca del aplicativo se mantiene como «proveedor» y no se presenta como el servicio de la referencia.
 
-- `src/web/index.html`: panel de conversación, bienvenida y controles existentes.
-- `src/web/styles.css`: composición adaptable, estados de foco y movimiento reducido.
-- `src/web/assets/assistant.svg`: avatar vectorial decorativo.
-- `src/web/assets/chat-background.png`: imagen de fondo preparada con la herramienta de imágenes a partir de la fotografía adjunta del usuario (mujer con portátil). Es una versión reprocesada con IA, no una copia binaria del archivo original; puede presentar diferencias en detalles del rostro y la escena.
-- `src/web/chat.js`: estado de conexión y procesamiento derivado de la sesión.
+- `web/index.html`: panel de conversación, bienvenida y controles existentes.
+- `web/styles.css`: composición adaptable, estados de foco y movimiento reducido.
+- `web/assets/assistant.svg`: avatar vectorial decorativo.
+- `web/assets/chat-background.png`: imagen de fondo preparada con la herramienta de imágenes a partir de la fotografía adjunta del usuario (mujer con portátil). Es una versión reprocesada con IA, no una copia binaria del archivo original; puede presentar diferencias en detalles del rostro y la escena.
+- `web/chat.js`: estado de conexión y procesamiento derivado de la sesión.
 
 Las imágenes se sirven desde el propio aplicativo, sin llamadas a servicios de imágenes externos. El servidor permite únicamente sus rutas explícitas. El diseño no modifica contratos, datos del proveedor, permisos de confirmación ni reglas de simulación.
 

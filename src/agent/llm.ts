@@ -13,6 +13,20 @@ export function localIntent(text:string):Intent|null {
   const commands:Record<string,Intent>={leer:'leer',solicitud:'leer',mapear:'mapear',campos:'mapear',formulario:'formulario',generar:'formulario',preparar:'preparar',paquete:'paquete',empaquetar:'paquete',simular:'simular',enviar:'simular',resumen:'resumen',ayuda:'ayuda'};
   return commands[t]??null;
 }
+// Frases naturales sin LLM: el orden importa ("procesa… no envíes nada" es preparar, no simular).
+const keywordRules:[RegExp,Intent][]=[
+ [/\b(procesa|procesar|prepara|preparar)\b/u,'preparar'],
+ [/(^|\s)(env[ií]a|env[ií]alo|enviar|simula|simular)\b/u,'simular'],
+ [/\b(paquete|empaqueta|empaquetar)\b/u,'paquete'],
+ [/\b(formulario|genera|generar)\b/u,'formulario'],
+ [/\b(mapea|mapear|campos|faltan|faltantes)\b/u,'mapear'],
+ [/\b(lee|leer|solicitud|soportes|resumen)\b/u,'leer'],
+ [/\b(ayuda|comandos)\b/u,'ayuda']
+];
+export function keywordIntent(text:string):Intent|null {
+  const t=text.toLocaleLowerCase('es');
+  return keywordRules.find(([pattern])=>pattern.test(t))?.[1]??null;
+}
 async function requestModel(payload:unknown,name:string,schema:unknown,runtime:ModelRuntime):Promise<unknown> {
  try {
   const [prompt,knowledge]=await Promise.all([
@@ -26,10 +40,10 @@ async function requestModel(payload:unknown,name:string,schema:unknown,runtime:M
 export async function chooseIntent(text:string,runtime:ModelRuntime=createModelRuntime()):Promise<{intent:Intent;fallback:boolean}> {
   const local=localIntent(text);
   if(local)return {intent:local,fallback:false};
-  if(!process.env.LLM_API_KEY)return {intent:'consulta',fallback:false};
+  if(!process.env.LLM_API_KEY)return {intent:keywordIntent(text)??'consulta',fallback:false};
   const raw=await requestModel({stage:'intent',question:text},'intent',{type:'object',properties:{intent:{type:'string',enum:intentSchema.options}},required:['intent'],additionalProperties:false},runtime);
   const parsed=z.object({intent:intentSchema}).strict().safeParse(raw);
-  return parsed.success?{intent:parsed.data.intent,fallback:false}:{intent:'ayuda',fallback:true};
+  return parsed.success?{intent:parsed.data.intent,fallback:false}:{intent:keywordIntent(text)??'ayuda',fallback:true};
 }
 export async function answerQuestion(question:string,evidence:Evidence[],recentQuestions:string[],runtime:ModelRuntime=createModelRuntime()):Promise<{ok:true;text:string}|{ok:false;error:string}> {
   if(!process.env.LLM_API_KEY)return {ok:false,error:'Las preguntas en lenguaje natural requieren configurar LLM_API_KEY en el archivo .env del servidor y reiniciarlo. Puedes continuar con los botones y comandos.'};

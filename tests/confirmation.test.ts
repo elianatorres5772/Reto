@@ -53,3 +53,26 @@ test('LLM no puede devolver prosa, valores o autorizaciones; error de proveedor 
     assert.equal(JSON.stringify(events).includes('test-secret-never-exposed'),false);
   } finally {globalThis.fetch=priorFetch;if(priorKey===undefined)delete process.env.LLM_API_KEY;else process.env.LLM_API_KEY=priorKey;}
 });
+test('Guion §11 sin LLM: procesa, resume con pregunta, «envía» pide paquete y bloquea si no está listo',async()=>{
+  const s=createSession({today:()=> '2026-08-25'});const events:ChatEvent[]=[];
+  const send=async(caso:string,text:string)=>{events.length=0;await s.chat(caso,text,e=>events.push(e));return [...events];};
+  const text=(list:ChatEvent[])=>list.filter(e=>e.type==='message').map(e=>String(e.text)).join('\n');
+  const first=await send(co,'Procesa el caso "ec-corp-andina". Dime qué campos quedaron llenos, cuáles faltan, si el paquete está listo para firma y qué soportes debo actualizar. No envíes nada todavía.');
+  assert.ok(first.some(e=>e.type==='case_selected'&&e.caseId==='ec-corp-andina'));
+  assert.ok(first.some(e=>e.type==='tool_result'&&e.name==='proveedor_generar_formulario'));
+  assert.match(text(first),/out\/ec-corp-andina\/formulario\.pdf/);assert.match(text(first),/Listo para firma según soportes: no/);assert.match(text(first),/certificado_cumplimiento_tributario/);
+  assert.equal(first.filter(e=>e.type!=='thinking'&&e.type!=='done').at(-1)?.type,'message');assert.ok(first.some(e=>e.type==='confirmation'&&e.state==='pending'));
+  assert.ok(!first.some(e=>e.type==='tool_call'&&['proveedor_armar_paquete','proveedor_simular_envio'].includes(String(e.name))));
+  const envia=await send('ec-corp-andina','envía');assert.ok(!envia.some(e=>e.type==='tool_call'));assert.ok(envia.some(e=>e.type==='confirmation'&&e.state==='pending'&&e.action==='proveedor_armar_paquete'));
+  const yes=await send('ec-corp-andina','sí');assert.ok(yes.some(e=>e.type==='tool_result'&&e.name==='proveedor_armar_paquete'));
+  assert.ok(!yes.some(e=>e.type==='confirmation'&&e.state==='pending'));assert.match(text(yes),/No propongo el envío/);
+});
+test('Guion §11 con caso listo: «envía» y dos confirmaciones producen solo ENVIO-SIMULADO.md',async()=>{
+  const s=createSession({today:()=> '2026-08-25'});const events:ChatEvent[]=[];
+  const send=async(text:string)=>{events.length=0;await s.chat(co,text,e=>events.push(e));return [...events];};
+  await send(`Procesa el caso "${co}". No envíes nada todavía.`);
+  await send('envía');
+  const packed=await send('sí');assert.ok(packed.some(e=>e.type==='confirmation'&&e.state==='pending'&&e.action==='proveedor_simular_envio'));
+  const sent=await send('sí');const result=sent.find(e=>e.type==='tool_result'&&e.name==='proveedor_simular_envio')?.result as {ok:boolean;data:{ruta:string}};
+  assert.ok(result.ok);assert.equal(result.data.ruta,`out/${co}/ENVIO-SIMULADO.md`);
+});

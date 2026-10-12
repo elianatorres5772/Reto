@@ -20,7 +20,7 @@ if(prepared) {
   await writeFile(join(corrupt,'solicitud.json'),JSON.stringify(request));
   await writeFile(join(corrupt,'plantilla-celdas.json'),'{ JSON corrupto');
 }
-const child=spawn(process.execPath,[join(repo,'node_modules/tsx/dist/cli.mjs'),join(repo,'src/server/index.ts')],{
+const child=spawn(process.execPath,[join(repo,'node_modules/tsx/dist/cli.mjs'),join(repo,'src/server.ts')],{
   cwd:dir,env:{...process.env,HOST:'127.0.0.1',CHAT_RATE_LIMIT:'2000',PORT:prepared?'3102':'3101',LLM_API_KEY:'',DOTENV_CONFIG_PATH:join(dir,'.env')},stdio:'inherit'
 });
 let stopping=false;

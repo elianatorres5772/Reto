@@ -51,7 +51,7 @@ test('JSON corrupto, caso inexistente y plantilla inválida son errores recupera
     const good=await tools.execute('proveedor_leer_solicitud',{caso_id:ec});assert.ok(good.ok);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
-test('No permite symlinks de fixtures que escapen del directorio autorizado',async()=>{
+test('No permite symlinks de fixtures que escapen del directorio autorizado',{skip:process.platform==='win32'&&'Windows exige privilegios para crear symlinks'},async()=>{
   const dir=await tempFixtures();
   try {
     await rm(join(dir,'maestro.json'));await symlink(join(process.cwd(),'fixtures/reto-01/maestro.json'),join(dir,'maestro.json'));

@@ -22,9 +22,9 @@ Estados: `idle`, `selected`, `preparing`, `awaiting_approval`, `preparing_packag
 - `src/workflow/registration.ts`: secuencia fija, progreso, invalidación de permisos y cierre humano; no contiene claves ni llama al LLM.
 - `src/tools/proveedor.ts`: cinco contratos públicos. La fachada valida los datos contra las fuentes.
 - `src/tools/engine.ts`: mapeo, reglas tributarias, soportes, archivos y aislamiento de descargas.
-- `src/server/index.ts`: sesión, validación HTTP, rutas del flujo y transmisión de eventos.
-- `src/web/registration.js`: representación de datos con `textContent`, acciones de selección/autorizar/descargar y recuperación de estado.
-- `src/web/index.html` y `styles.css`: pantalla documental accesible y adaptable a móvil, conservando la paleta verde manzana y el fondo de referencia como cabecera.
+- `src/server.ts`: sesión, validación HTTP, rutas del flujo y transmisión de eventos.
+- `web/registration.js`: representación de datos con `textContent`, acciones de selección/autorizar/descargar y recuperación de estado.
+- `web/index.html` y `styles.css`: pantalla documental accesible y adaptable a móvil, conservando la paleta verde manzana y el fondo de referencia como cabecera.
 
 La API conversacional y la herramienta de simulación se mantienen como compatibilidad del contrato original y demo. No son parte de la nueva experiencia. La preparación es determinista para los mapas JSON del reto; no debe presentarse como una inferencia del LLM ni como recepción de correos reales.
 

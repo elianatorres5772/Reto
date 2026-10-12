@@ -3,13 +3,16 @@ import { createServer, type ServerResponse, type IncomingMessage } from 'node:ht
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { createSession } from '../agent/orchestrator.js';
-import { createProveedorTools } from '../tools/proveedor.js';
-import { caseId, artifactId } from '../contracts/proveedor.js';
-import { createRegistrationWorkflow } from '../workflow/registration.js';
-import { workflowAction, workflowApproval } from '../contracts/workflow.js';
+import { createSession } from './agent/orchestrator.js';
+import { createProveedorTools } from './tools/proveedor.js';
+import { caseId, artifactId } from './contracts/proveedor.js';
+import { createRegistrationWorkflow } from './workflow/registration.js';
+import { workflowAction, workflowApproval } from './contracts/workflow.js';
 const sessions=new Map<string,{session:ReturnType<typeof createSession>;workflow:ReturnType<typeof createRegistrationWorkflow>;accessed:number}>();
 const catalog=createProveedorTools();
+// Fecha de evaluación simulada para la defensa (YYYY-MM-DD, no futura). Vacía: fecha UTC actual.
+const evaluationDate=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(d=>!Number.isNaN(Date.parse(d))&&d<=new Date().toISOString().slice(0,10)).optional().safeParse(process.env.FECHA_EVALUACION||undefined);
+const today=evaluationDate.success&&evaluationDate.data?()=>evaluationDate.data!:undefined;
 const MAX_SESSIONS=100;
 const originAllowed=(req:IncomingMessage)=>{
  const origin=req.headers.origin;
@@ -45,17 +48,17 @@ export const server=createServer(async(req,res)=>{
     if(!originAllowed(req)) {json(res,403,{ok:false,error:'Origen no permitido.'});return;}
     if(req.method==='POST'&&!rateAllowed(req)){json(res,429,{ok:false,error:'Demasiadas solicitudes. Espera un minuto.'});return;}
     const url=new URL(req.url??'/','http://localhost');
-    if(req.method==='GET' && ['/','/registration.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
+    if(req.method==='GET' && ['/','/registration.js','/chat.js','/styles.css','/assets/assistant.svg','/assets/chat-background.png'].includes(url.pathname)) {
       const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
       res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
     }
-    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:process.env.LLM_PROVIDER??'openai',model:process.env.LLM_MODEL??'gpt-4.1-mini',configured:!!process.env.LLM_API_KEY});return;}
+    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:process.env.LLM_PROVIDER??'openai',model:process.env.LLM_MODEL??'gpt-4.1-mini',configured:!!process.env.LLM_API_KEY,fecha_evaluacion:today?.()??null});return;}
     if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);
       if(sessions.size>=MAX_SESSIONS){json(res,503,{ok:false,error:'Capacidad temporal agotada.'});return;}
-      const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id}),workflow:createRegistrationWorkflow({sessionId:id}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
+      const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id,today}),workflow:createRegistrationWorkflow({sessionId:id,today}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
     }
     if(req.method==='GET' && url.pathname==='/api/workflow') {
       const entry=sessionEntry(req);if(!entry){json(res,401,{ok:false,error:'Sesión no disponible.'});return;}
@@ -97,4 +100,5 @@ export const server=createServer(async(req,res)=>{
 });
 const port=z.coerce.number().int().min(1).max(65535).safeParse(process.env.PORT??3000);
 if(!port.success){console.error('PORT debe ser un puerto válido.');process.exitCode=1;}
+else if(!evaluationDate.success){console.error('FECHA_EVALUACION debe tener formato YYYY-MM-DD y no ser futura.');process.exitCode=1;}
 else {server.requestTimeout=30000;server.headersTimeout=10000;server.listen(port.data,process.env.HOST??'127.0.0.1',()=>console.log(`Servidor iniciado en puerto ${port.data}.`));}

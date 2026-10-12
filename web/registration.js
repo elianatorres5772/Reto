@@ -9,7 +9,7 @@ function element(tag, value, className) { const node = document.createElement(ta
 function pill(value, status) { return element('span', value, `pill ${['vencido','archivo_faltante','ausente'].includes(status) ? 'bad' : ['faltante','requiere_confirmacion'].includes(status) ? 'warn' : ''}`); }
 function setBusy(value) {
   busy = value; $('thinking').hidden = !value;
-  document.querySelectorAll('button,select').forEach(node => node.disabled = value || !session);
+  document.querySelectorAll('main button,main select').forEach(node => node.disabled = value || !session);
   $('prepare').disabled = value || !session || !$('case').value;
   text('connection-status', value ? 'Preparando documentación…' : session ? 'Listo para preparar' : 'Sin conexión');
 }

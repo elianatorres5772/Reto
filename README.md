@@ -1,6 +1,20 @@
 # Registro como proveedor · Preparación documental
 
-Aplicativo TypeScript para automatizar la transcripción de solicitudes de clientes al formulario de registro como proveedor. La pantalla de trabajo muestra solicitudes recibidas, correo, campos del maestro, soportes, documentos y autorización del paquete. **No es un chatbot. El proceso termina en la entrega para revisión y firma humana.**
+Aplicativo TypeScript para automatizar la transcripción de solicitudes de clientes al formulario de registro como proveedor. La pantalla de trabajo muestra solicitudes recibidas, correo, campos del maestro, soportes, documentos y autorización del paquete. El botón **Conversar con el agente** abre el chat del agente en una ventana modal. Firma y envío real siempre son humanos.
+
+## Chat del agente
+
+En el chat se ve el historial, el indicador «El agente está pensando…», cada llamada a herramienta (nombre, argumentos y resultado resumido, con descargas) y un aviso resaltado cuando el agente pide confirmación. Sin `LLM_API_KEY`, el agente reconoce órdenes en lenguaje natural por palabras clave («procesa el caso…», «envía», «paquete», «ayuda»). Guion de la defensa (PRD §11):
+
+1. `Procesa el caso "ec-corp-andina". Dime qué campos quedaron llenos, cuáles faltan, si el paquete está listo para firma y qué soportes debo actualizar. No envíes nada todavía.` → lectura, mapeo y formulario, un resumen con la ruta `out/ec-corp-andina/`, los faltantes, `listo_para_firma` y los soportes a actualizar, y al final una pregunta.
+2. `envía` → pide confirmar el armado del paquete; tras «sí» lo arma. Si está listo para firma, pide una segunda confirmación y escribe solo `out/<caso>/ENVIO-SIMULADO.md`. Si tiene soportes vencidos o ausentes (RN3), no propone el envío e indica qué actualizar.
+
+**Fecha de evaluación simulada.** Las vigencias se evalúan con la fecha UTC actual. Con los fixtures, la cámara de comercio vence el 2026-09-30, así que después de esa fecha ningún caso queda listo para firma. Para mostrar el envío simulado, arranca con `FECHA_EVALUACION=2026-08-25` (en `.env` o en el entorno del hosting). Formato `YYYY-MM-DD` y nunca futura; con un valor inválido el servidor no arranca. La fecha activa se ve en `GET /api/health` (`fecha_evaluacion`) y en la cabecera del chat. Con esa fecha, `co-industrias-delta` llega hasta `ENVIO-SIMULADO.md`. `ec-corp-andina` sigue bloqueado porque le falta `certificado_cumplimiento_tributario`, que no existe en el repositorio de soportes.
+
+| Método y ruta | Entrada / función |
+|---|---|
+| `POST /api/chat` | Cabecera `X-Session-Id`; cuerpo `{caso_id, message}`. Responde NDJSON con eventos `thinking`, `tool_call`, `tool_result`, `message`, `confirmation` (`pending`/`confirmed`/`cancelled`), `case_selected` y `done`. |
+| `GET /api/sessions/:id` | Historial completo de la sesión (misma cabecera `X-Session-Id`). |
 
 ## Ejecutar
 

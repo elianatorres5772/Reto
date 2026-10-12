@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#e9f2dd"><title>Registro como proveedor · Preparación documental</title>
-  <link rel="stylesheet" href="/styles.css"><script src="/registration.js" defer></script>
+  <link rel="stylesheet" href="/styles.css"><script src="/registration.js" defer></script><script src="/chat.js" defer></script>
 </head>
 <body>
   <header class="app-header">
@@ -66,5 +66,21 @@
       <footer>El proceso prepara documentos. No firma, no envía ni accede a portales de clientes.</footer>
     </div>
   </main>
+  <button id="chat-open" class="primary chat-launcher" type="button" aria-haspopup="dialog" aria-controls="chat-dialog"><img src="/assets/assistant.svg" alt="" width="24" height="24">Conversar con el agente</button>
+  <dialog id="chat-dialog" class="chat-dialog" aria-labelledby="chat-title">
+    <header class="chat-header">
+      <div><span class="eyebrow">AGENTE CONVERSACIONAL</span><h2 id="chat-title">Registro como proveedor</h2><small id="chat-mode">Conectando…</small></div>
+      <button id="chat-close" class="secondary" type="button" aria-label="Cerrar chat">✕</button>
+    </header>
+    <label class="chat-case" for="chat-case">Caso activo <select id="chat-case"></select></label>
+    <div id="chat-history" class="chat-history" aria-live="polite" aria-label="Historial de la conversación"></div>
+    <div id="chat-thinking" class="processing" role="status" hidden><span class="spinner" aria-hidden="true"></span>El agente está pensando…</div>
+    <section id="chat-confirmation" class="chat-confirmation" role="alertdialog" aria-labelledby="chat-question" hidden>
+      <strong>⚠ El agente necesita tu confirmación</strong><p id="chat-question"></p>
+      <div class="approval-actions"><button id="chat-yes" class="primary" type="button">Sí</button><button id="chat-no" class="secondary" type="button">No</button></div>
+    </section>
+    <div class="chat-commands"><button type="button" class="secondary" data-command="procesa el caso">Procesar caso</button><button type="button" class="secondary" data-command="envía">Simular envío</button><button type="button" class="secondary" data-command="ayuda">Ayuda</button></div>
+    <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-message">Mensaje</label><input id="chat-message" autocomplete="off" maxlength="2000" placeholder="Ej.: Procesa el caso ec-corp-andina. No envíes nada todavía."><button class="primary" type="submit">Enviar</button></form>
+  </dialog>
 </body>
 </html>

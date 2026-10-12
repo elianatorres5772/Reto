@@ -14,7 +14,7 @@ test('HTTP: chat incremental, confirmación, descarga aislada, errores y segurid
   const address=probe.address();assert.ok(address&&typeof address!=='string');const port=address.port;await new Promise<void>(r=>probe.close(()=>r()));
   const base=`http://127.0.0.1:${port}`;
   const secret=`test-key-${randomUUID()}`;
-  const child=spawn(process.execPath,['--import','tsx','src/server/index.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:secret},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:secret},stdio:['ignore','pipe','pipe']});
   let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
   try {
     let ready=false;
@@ -47,5 +47,33 @@ test('HTTP: chat incremental, confirmación, descarga aislada, errores y segurid
     assert.equal((await fetch(`${base}/api/sessions/${session.session_id}`,{headers:{'X-Session-Id':session2.session_id}})).status,401);
     const health=z.object({provider:z.string(),model:z.string(),configured:z.boolean()}).parse(await (await fetch(`${base}/api/health`)).json());assert.equal(health.provider,'openai');assert.equal(health.configured,true);
     assert.equal(logs.includes(secret),false);
+  } finally {child.kill('SIGTERM');await once(child,'exit');}
+});
+async function startServer(env:Record<string,string>) {
+  const probe=createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');
+  const address=probe.address();assert.ok(address&&typeof address!=='string');const port=address.port;await new Promise<void>(r=>probe.close(()=>r()));
+  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:'',...env},stdio:['ignore','pipe','pipe']});
+  return {child,base:`http://127.0.0.1:${port}`};
+}
+test('HTTP: FECHA_EVALUACION permite el guion §11 hasta ENVIO-SIMULADO.md y rechaza fechas inválidas o futuras',async()=>{
+  for(const fecha of ['2026-13-40','2999-01-01','ayer']) {
+    const {child}=await startServer({FECHA_EVALUACION:fecha});const [code]=await once(child,'exit');assert.equal(code,1);
+  }
+  const {child,base}=await startServer({FECHA_EVALUACION:'2026-08-25'});
+  try {
+    let ready=false;
+    for(let i=0;i<100;i++){try{const r=await fetch(`${base}/api/health`);if(r.ok){ready=true;break;}}catch{}await delay(50);}
+    assert.ok(ready,'El servidor debe arrancar');
+    assert.equal(z.object({fecha_evaluacion:z.string()}).parse(await (await fetch(`${base}/api/health`)).json()).fecha_evaluacion,'2026-08-25');
+    const session=z.object({session_id:z.string()}).parse(await (await fetch(`${base}/api/session`,{method:'POST'})).json());
+    const chat=async(message:string)=>{
+      const response=await fetch(`${base}/api/chat`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Id':session.session_id},body:JSON.stringify({caso_id:'co-industrias-delta',message})});
+      return (await response.text()).trim().split('\n').map(line=>JSON.parse(line) as {type:string;name?:string;state?:string;text?:string;result?:{ok:boolean;data?:{ruta?:string}}});
+    };
+    const first=await chat('Procesa el caso "co-industrias-delta". No envíes nada todavía.');
+    assert.ok(first.some(e=>e.type==='message'&&e.text?.includes('Listo para firma según soportes: sí')));
+    await chat('envía');await chat('sí');
+    const sent=await chat('sí');const result=sent.find(e=>e.type==='tool_result'&&e.name==='proveedor_simular_envio')?.result;
+    assert.ok(result?.ok);assert.equal(result.data?.ruta,'out/co-industrias-delta/ENVIO-SIMULADO.md');
   } finally {child.kill('SIGTERM');await once(child,'exit');}
 });
