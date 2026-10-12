@@ -1,9 +1,17 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { ConfirmationGate } from '../src/agent/confirmation.js';
 import { createSession, type ChatEvent } from '../src/agent/orchestrator.js';
 import { chooseIntent } from '../src/agent/llm.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+// Cada prueba escribe en su propia salida: los archivos de prueba corren en paralelo y comparten out/.
+const outputs:string[]=[];
+const tempOut=()=>{const dir=mkdtempSync(join(tmpdir(),'proveedor-out-'));outputs.push(dir);return dir;};
+after(()=>{for(const dir of outputs)rmSync(dir,{recursive:true,force:true});});
+
 const co='co-industrias-delta';
 const request={action:'proveedor_armar_paquete' as const,caseId:co,artifactId:randomUUID(),question:'¿Confirmas?'};
 test('Confirmación sin pregunta, ambigua, citada o fuera del turno inmediato no autoriza',()=>{
@@ -21,7 +29,7 @@ test('Permiso específico para caso, acción y artefacto, consumido una vez',()=
   gate.ask(request);gate.userTurn('sí');assert.equal(gate.consume(request.action,co,randomUUID()),false);
 });
 test('Chat prepara, pregunta, empaqueta, vuelve a preguntar y simula solamente después del sí',async()=>{
-  const s=createSession({today:()=> '2026-08-25'});
+  const s=createSession({today:()=> '2026-08-25',outputRoot:tempOut()});
   const events:ChatEvent[]=[];
   const send=async(text:string)=>{events.length=0;await s.chat(co,text,e=>events.push(e));return [...events];};
   const first=await send('preparar');assert.ok(first.some(e=>e.type==='confirmation'&&e.state==='pending'));
@@ -33,7 +41,7 @@ test('Chat prepara, pregunta, empaqueta, vuelve a preguntar y simula solamente d
   const sent=await send('sí');assert.ok(sent.some(e=>e.type==='tool_result'&&e.name==='proveedor_simular_envio'&&(e.result as {ok:boolean}).ok));
 });
 test('Turno intermedio y cambio de caso cancelan confirmación pendiente',async()=>{
-  const s=createSession({today:()=> '2026-08-25'});const events:ChatEvent[]=[];
+  const s=createSession({today:()=> '2026-08-25',outputRoot:tempOut()});const events:ChatEvent[]=[];
   await s.chat(co,'preparar',()=>{});
   await s.chat(co,'leer',()=>{});
   await s.chat(co,'sí',e=>events.push(e));assert.ok(!events.some(e=>e.type==='tool_call'));
@@ -44,17 +52,17 @@ test('LLM no puede devolver prosa, valores o autorizaciones; error de proveedor 
   const priorKey=process.env.LLM_API_KEY,priorFetch=globalThis.fetch;
   process.env.LLM_API_KEY='test-secret-never-exposed';
   try {
-    globalThis.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({intent:'simular',confirmed:true,cuenta:'INVENTADA'})}}]}),{status:200});
+    globalThis.fetch=async()=>new Response(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'text',text:JSON.stringify({intent:'simular',confirmed:true,cuenta:'INVENTADA'})}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}),{status:200,headers:{'Content-Type':'application/json'}});
     assert.deepEqual(await chooseIntent('hazlo'),{intent:'ayuda',fallback:true});
     globalThis.fetch=async()=>new Response('test-secret-never-exposed',{status:401});
     const failure=await chooseIntent('hazlo');assert.equal(JSON.stringify(failure).includes(process.env.LLM_API_KEY),false);
-    globalThis.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:'{"intent":"simular"}'}}]}),{status:200});
+    globalThis.fetch=async()=>new Response(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'text',text:JSON.stringify({intent:'simular'})}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}),{status:200,headers:{'Content-Type':'application/json'}});
     const s=createSession();const events:ChatEvent[]=[];await s.chat(co,'hazlo',e=>events.push(e));assert.ok(!events.some(e=>e.type==='tool_call'));
     assert.equal(JSON.stringify(events).includes('test-secret-never-exposed'),false);
   } finally {globalThis.fetch=priorFetch;if(priorKey===undefined)delete process.env.LLM_API_KEY;else process.env.LLM_API_KEY=priorKey;}
 });
 test('Guion §11 sin LLM: procesa, resume con pregunta, «envía» pide paquete y bloquea si no está listo',async()=>{
-  const s=createSession({today:()=> '2026-08-25'});const events:ChatEvent[]=[];
+  const s=createSession({today:()=> '2026-08-25',outputRoot:tempOut()});const events:ChatEvent[]=[];
   const send=async(caso:string,text:string)=>{events.length=0;await s.chat(caso,text,e=>events.push(e));return [...events];};
   const text=(list:ChatEvent[])=>list.filter(e=>e.type==='message').map(e=>String(e.text)).join('\n');
   const first=await send(co,'Procesa el caso "ec-corp-andina". Dime qué campos quedaron llenos, cuáles faltan, si el paquete está listo para firma y qué soportes debo actualizar. No envíes nada todavía.');
@@ -68,7 +76,7 @@ test('Guion §11 sin LLM: procesa, resume con pregunta, «envía» pide paquete 
   assert.ok(!yes.some(e=>e.type==='confirmation'&&e.state==='pending'));assert.match(text(yes),/No propongo el envío/);
 });
 test('Guion §11 con caso listo: «envía» y dos confirmaciones producen solo ENVIO-SIMULADO.md',async()=>{
-  const s=createSession({today:()=> '2026-08-25'});const events:ChatEvent[]=[];
+  const s=createSession({today:()=> '2026-08-25',outputRoot:tempOut()});const events:ChatEvent[]=[];
   const send=async(text:string)=>{events.length=0;await s.chat(co,text,e=>events.push(e));return [...events];};
   await send(`Procesa el caso "${co}". No envíes nada todavía.`);
   await send('envía');

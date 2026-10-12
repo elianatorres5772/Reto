@@ -10,6 +10,7 @@ import { ConfirmationGate } from '../src/agent/confirmation.js';
 import { createSession, type ChatEvent } from '../src/agent/orchestrator.js';
 import { createModelRuntime } from '../src/llm/runtime.js';
 import { OpenAIAdapter } from '../src/llm/openai.js';
+import { AnthropicAdapter } from '../src/llm/anthropic.js';
 import type { LlmAdapter } from '../src/llm/adapter.js';
 
 async function setup(day='2026-08-29') {
@@ -52,7 +53,7 @@ test('Contratos públicos describen argumentos, retornan strings y rechazan mape
 });
 test('Presupuestos de sesión y servidor bloquean llamadas incluso al crear otra sesión',async()=>{
  let calls=0;
- const adapter:LlmAdapter={provider:'openai',model:'fake',async enviar(){calls++;return {ok:true,data:{intent:'consulta'},usage:{input:1,output:1}};}};
+ const adapter:LlmAdapter={provider:'anthropic',model:'fake',async enviar(){calls++;return {ok:true,data:{intent:'consulta'},usage:{input:1,output:1}};}};
  const runtime=createModelRuntime(adapter,{iterations:25,sessionTokens:2000,outputTokens:500,dailyTokens:1000000,timeoutMs:1000});
  const request=()=>runtime.request([{role:'user',content:'hola'}],[],'test',{});
  assert.deepEqual(await request(),{intent:'consulta'});assert.equal(await request(),null);assert.equal(calls,1);assert.match(runtime.lastError,/límite/);
@@ -99,4 +100,23 @@ test('Admite estructura repositorio del PRD, aplica regla PE y protege fixtures 
   assert.equal(await readFile(join(root,'repositorio/maestro.json'),'utf8'),before);
   await assert.rejects(readFile(join(root,'log.jsonl')));
  } finally {await rm(s.directory,{recursive:true,force:true});}
+});
+test('Adaptador Anthropic: salida JSON con esquema, timeout y clave rechazada sin exponer secretos',async()=>{
+ const original=globalThis.fetch;
+ const schema={type:'object',properties:{intent:{type:'string',enum:['leer']}},required:['intent'],additionalProperties:false};
+ try {
+  const captured:{body?:{model:string;system:string;messages:{role:string}[];output_config:{effort:string;format:{type:string;schema:unknown}};tool_choice?:{type:string};fallbacks:unknown}}={};
+  globalThis.fetch=async(_url,init)=>{captured.body=JSON.parse(String(init?.body));return new Response(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'text',text:'{"intent":"leer"}'}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:12,output_tokens:3}}),{status:200,headers:{'Content-Type':'application/json'}});};
+  const ok=await new AnthropicAdapter(undefined,'secret-fake').enviar([{role:'system',content:'reglas'},{role:'user',content:'leer'}],[{name:'proveedor_leer_solicitud',description:'Lee',parameters:{$schema:'http://json-schema.org/draft-07/schema#',type:'object',properties:{}}}],{name:'intent',schema,maxOutputTokens:4000,timeoutMs:5000});
+  assert.deepEqual(ok,{ok:true,data:{intent:'leer'},usage:{input:12,output:3}});
+  const sent=captured.body;assert.ok(sent);
+  assert.equal(sent.model,'claude-opus-5-5');assert.equal(sent.system,'reglas');assert.deepEqual(sent.messages.map(m=>m.role),['user']);
+  assert.deepEqual(sent.output_config,{effort:'low',format:{type:'json_schema',schema}});assert.equal(sent.tool_choice?.type,'none');assert.equal(sent.fallbacks,'default');
+  globalThis.fetch=async()=>new Response(JSON.stringify({type:'error',error:{type:'authentication_error',message:'secret-fake invalid'}}),{status:401,headers:{'Content-Type':'application/json'}});
+  const denied=await new AnthropicAdapter('claude-opus-5-5','secret-fake').enviar([{role:'user',content:'x'}],[],{name:'t',schema,maxOutputTokens:100,timeoutMs:5000});
+  assert.equal(denied.ok,false);assert.ok(!JSON.stringify(denied).includes('secret-fake'));
+  globalThis.fetch=(_url,init)=>new Promise((_,reject)=>init?.signal?.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError'))));
+  const slow=await new AnthropicAdapter('claude-opus-5-5','secret-fake').enviar([{role:'user',content:'x'}],[],{name:'t',schema,maxOutputTokens:100,timeoutMs:20});
+  assert.equal(slow.ok,false);if(!slow.ok)assert.equal(slow.error.code,'TIMEOUT');assert.ok(!JSON.stringify(slow).includes('secret-fake'));
+ } finally {globalThis.fetch=original;}
 });

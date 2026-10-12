@@ -29,7 +29,7 @@ Para Panamá debe generarse `valores-portal.md` para copia manual. No se accede 
 
 ## 3. Publicar en Internet
 
-Sigue [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md): entra a Render, conecta el repositorio y crea el servicio desde `render.yaml`. No requiere clave OpenAI. Espera y copia la URL HTTPS real. Comprueba `/api/health` y repite el paso 2 desde esa URL, idealmente en ventana privada.
+Sigue [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md): entra a Render, conecta el repositorio y crea el servicio desde `render.yaml`. No requiere clave LLM; para probar Claude, agrega `LLM_API_KEY` como variable secreta. Espera y copia la URL HTTPS real. Comprueba `/api/health` y repite el paso 2 desde esa URL, idealmente en ventana privada.
 
 No hay una URL publicada automáticamente por tener Dockerfile o Blueprint. El hosting requiere tu cuenta y aceptar sus condiciones. Registra la URL real verificada en README.
 

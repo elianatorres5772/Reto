@@ -23,6 +23,7 @@
     "module:check": "tsx scripts/build-module.ts --check"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "dotenv": "^16.6.1",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.2",

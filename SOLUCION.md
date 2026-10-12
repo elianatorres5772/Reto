@@ -12,7 +12,7 @@ flowchart LR
     Docs[web/ · flujo documental<br/>botones] -->|/api/workflow/*| Server
     Server --> Agent[src/agent/<br/>ciclo del agente + puerta de confirmación]
     Server --> Workflow[src/workflow/<br/>flujo documental]
-    Agent -->|intención / selección de evidencia| LLM[src/llm/adapter.ts → openai.ts]
+    Agent -->|intención / selección de evidencia| LLM[src/llm/adapter.ts → anthropic.ts<br/>Claude]
     Agent --> Tools[src/tools/proveedor.ts<br/>5 herramientas zod]
     Workflow --> Tools
     Tools --> Engine[src/tools/engine.ts<br/>mapeo, reglas, Excel/PDF/ZIP]
@@ -45,8 +45,12 @@ Secuencia del envío: «procesa…» genera el formulario y pregunta por el paqu
 
 ## 4. Elección del modelo
 
-- **Proveedor y modelo:** OpenAI `gpt-4.1-mini`. Soporta salida JSON con esquema estricto, y la tarea del modelo (clasificar intención y elegir evidencia) no necesita redacción extensa.
-- **Cambio de proveedor:** `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor. Otro adaptador se inyecta al crear la sesión sin tocar el ciclo. Solo está implementado OpenAI.
+- **Proveedor y modelo:** Anthropic, Claude Opus 5.5 (`claude-opus-5-5`), con el SDK oficial `@anthropic-ai/sdk` en [src/llm/anthropic.ts](src/llm/anthropic.ts).
+  - **Salida JSON con esquema** (`output_config.format`, tipo `json_schema`): la intención y la selección de evidencia siempre cumplen el esquema, que luego se valida otra vez con zod.
+  - **Esfuerzo `low`:** la tarea es corta (clasificar y elegir evidencia).
+  - **Respaldo ante rechazos de seguridad** con `fallbacks: "default"`.
+  - Elegimos el modelo más capaz por defecto. Para bajar costo se puede cambiar `LLM_MODEL` a `claude-haiku-5-5` sin tocar código; no se midió si la calidad se mantiene.
+- **Cambio de proveedor:** `LlmAdapter.enviar(mensajes, herramientas, opciones)` aísla el proveedor, y `LLM_PROVIDER` elige el adaptador al crear la sesión, sin tocar el ciclo. Están implementados Anthropic (por defecto) y OpenAI (`gpt-4.1-mini`).
 - **Control de gasto:**
   - El runtime reserva un presupuesto conservador por llamada (bytes UTF-8 de la carga más la salida máxima), contra `LLM_MAX_SESSION_TOKENS` por sesión y `LLM_MAX_DAILY_TOKENS` por proceso y día UTC.
   - Se cuentan también las llamadas fallidas.
@@ -55,7 +59,7 @@ Secuencia del envío: «procesa…» genera el formulario y pregunta por el paqu
 - **Costo estimado por caso:** se estima, no se midió, porque no hubo clave disponible durante la construcción.
   - Fórmula: `(tokens_entrada × precio_entrada + tokens_salida × precio_salida) / 1.000.000`.
   - Un caso típico hace una clasificación por mensaje con frase libre, más una selección de evidencia por consulta.
-  - Con 20.000 tokens de entrada y 1.500 de salida, y tarifas supuestas de USD 0,40 / USD 1,60 por millón, da **≈ USD 0,01 por caso**. Hay que verificar las tarifas vigentes antes de publicar.
+  - Cada llamada envía el prompt, el conocimiento y los esquemas de las cinco herramientas. Con 20.000 tokens de entrada y 1.500 de salida (razonamiento incluido) por caso, a las tarifas de Claude Opus 5.5 (USD 4 / USD 20 por millón), da **≈ USD 0,11 por caso**. Con Claude Haiku 5.5 (USD 0,10 / USD 0,50) serían ≈ USD 0,003. Hay que verificar las tarifas vigentes antes de publicar.
   - Las órdenes reconocidas por palabras clave y el flujo documental no consumen tokens.
 
 ## 5. Diseño del portal web (§7.4)
@@ -139,6 +143,7 @@ Para producción también falta: autenticación y cuotas por usuario, persistenc
   - recuperar el chat como modal;
   - hacer que el guion de §11 funcione sin clave (palabras clave y encadenado de paquete y envío);
   - `FECHA_EVALUACION`;
+  - el adaptador de Claude (`src/llm/anthropic.ts`) con el SDK oficial y salida JSON con esquema;
   - reporte parcial con plantilla corrupta y checklist en tres secciones;
   - pruebas unitarias, HTTP y E2E del guion;
   - este documento y el README.
@@ -169,6 +174,7 @@ El historial de Git muestra cada cambio. `EXPLICACION_CODIGO.md` sirve para prep
 | Dependencia | Necesidad |
 |---|---|
 | zod | Argumentos, salidas, fixtures y contratos de herramientas (obligatorio por el PRD). |
+| @anthropic-ai/sdk | SDK oficial de Claude: tipos, errores tipados, timeout y reintentos. |
 | zod-to-json-schema | Derivar los esquemas que ve el modelo desde los mismos esquemas zod. |
 | ExcelJS | Escribir el XLSX respetando hoja y celda. |
 | pdf-lib | Generar el PDF con etiqueta y valor en orden. |

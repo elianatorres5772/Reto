@@ -17,7 +17,7 @@ El front tiene dos vías sobre las mismas herramientas: el chat del agente en ve
 | Fixtures | Sin cambios versionados. Éxito probado con copias temporales, vencimiento con fechas originales. |
 | Capturas | docs/capturas/front-actual.png y flujo-documental.png, obtenidas del servidor compilado con fixtures originales. |
 
-No se utilizó clave LLM ni se llamó a OpenAI para preparar documentos. No se conectó una bandeja de correo ni un portal real. Las plantillas binarias originales no estaban disponibles; se reconstruyen desde mapas JSON. La URL pública, el arranque completo en entorno limpio y un nuevo build Docker de esta variante no se acreditan mediante estos checks. La evidencia Docker de abajo corresponde a la entrega anterior.
+No se utilizó clave LLM ni se llamó al proveedor para preparar documentos. No se conectó una bandeja de correo ni un portal real. Las plantillas binarias originales no estaban disponibles; se reconstruyen desde mapas JSON. La URL pública, el arranque completo en entorno limpio y un nuevo build Docker de esta variante no se acreditan mediante estos checks. La evidencia Docker de abajo corresponde a la entrega anterior.
 
 ## Validación histórica de la entrega conversacional anterior
 
@@ -47,7 +47,7 @@ Los E2E originales mantienen los soportes y fechas. Los servidores preparados ex
 
 El primer build Docker falló por DNS de npm en el constructor; la resolución se obtuvo usando el proxy y CA disponibles mediante secretos temporales BuildKit y una entrada de host del entorno para el proxy. No se desactivaron TLS, checksums ni políticas de integridad. Se corrigió además la lectura de archivos estáticos/configuración para el usuario no privilegiado y se repitió el flujo dentro del contenedor. Es una configuración de esta máquina; no se incorpora la IP del proxy ni sus valores al repositorio o imagen. El Dockerfile admite esos secretos opcionalmente y funciona con red normal sin ellos.
 
-No había `LLM_API_KEY` real disponible ni una vinculación guardada. No se afirma una llamada real autenticada a OpenAI ni una URL pública activa. La aplicación debe activarse en una cuenta de hosting y probar una consulta con la clave propia, según `DESPLIEGUE.md` y `../README_LLM.md`.
+No había `LLM_API_KEY` real disponible ni una vinculación guardada. No se afirma una llamada real autenticada a Claude ni una URL pública activa; el adaptador de Anthropic se probó con respuestas simuladas del formato de la API (`tests/prd.test.ts`). La aplicación debe activarse en una cuenta de hosting y probar una consulta con la clave propia, según `DESPLIEGUE.md` y `../README_LLM.md`.
 
 El build Docker no prueba el arranque completo en menos de dos minutos en una máquina limpia. Las pruebas se hicieron en Chromium de escritorio; no se afirma cobertura Firefox/WebKit ni auditoría exhaustiva de accesibilidad. Firma, correo real y automatización de portal están fuera del alcance.
 

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createSession } from './agent/orchestrator.js';
+import { llmProvider, llmModel } from './llm/runtime.js';
 import { createProveedorTools } from './tools/proveedor.js';
 import { caseId, artifactId } from './contracts/proveedor.js';
 import { createRegistrationWorkflow } from './workflow/registration.js';
@@ -53,7 +54,7 @@ export const server=createServer(async(req,res)=>{
       res.setHeader('Content-Type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':name.endsWith('.svg')?'image/svg+xml':name.endsWith('.png')?'image/png':'text/css; charset=utf-8');
       res.end(await readFile(new URL(`../web/${name}`,import.meta.url)));return;
     }
-    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:process.env.LLM_PROVIDER??'openai',model:process.env.LLM_MODEL??'gpt-4.1-mini',configured:!!process.env.LLM_API_KEY,fecha_evaluacion:today?.()??null});return;}
+    if(req.method==='GET' && url.pathname==='/api/health') {json(res,200,{ok:true,mode:process.env.LLM_API_KEY?'llm-intent':'deterministic',provider:llmProvider(),model:llmModel(),configured:!!process.env.LLM_API_KEY,fecha_evaluacion:today?.()??null});return;}
     if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);

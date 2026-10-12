@@ -38,7 +38,7 @@ Las exportaciones están en `out/<caso>/`. Las descargas por sesión usan copias
 
 ## Componente conversacional conservado: ciclo, API y consultas
 
-El ciclo usa rutas de herramientas acotadas y límite configurable de pasos por turno. La interfaz del proveedor es `LlmAdapter.enviar`; el adaptador incluido es OpenAI. Hay presupuesto por sesión, límite diario compartido por proceso, timeout y limitación de POST por IP.
+El ciclo usa rutas de herramientas acotadas y límite configurable de pasos por turno. La interfaz del proveedor es `LlmAdapter.enviar`; el adaptador por defecto es Anthropic (Claude Opus 5.5, `src/llm/anthropic.ts`) y OpenAI queda como alternativa (`LLM_PROVIDER=openai`). Hay presupuesto por sesión, límite diario compartido por proceso, timeout y limitación de POST por IP.
 
 Las consultas usan `{status:'answered'|'not_available'|'out_of_scope',evidence_ids:number[]}`. Se exigen referencias únicas válidas y se rechaza texto libre o propiedades adicionales. Las respuestas visibles se construyen con los valores retornados por herramientas. El contexto del LLM se limita a resultados y hasta cuatro preguntas del mismo caso. La API de historial incluye mensajes de usuario y eventos; sus rutas y headers están en README.
 

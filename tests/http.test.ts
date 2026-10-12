@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { contracts } from '../src/contracts/proveedor.js';
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -8,13 +8,21 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { unzipSync } from 'fflate';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+// Cada prueba escribe en su propia salida: los archivos de prueba corren en paralelo y comparten out/.
+const outputs:string[]=[];
+const tempOut=()=>{const dir=mkdtempSync(join(tmpdir(),'proveedor-out-'));outputs.push(dir);return dir;};
+after(()=>{for(const dir of outputs)rmSync(dir,{recursive:true,force:true});});
+
 
 test('HTTP: chat incremental, confirmación, descarga aislada, errores y seguridad',async()=>{
   const probe=createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');
   const address=probe.address();assert.ok(address&&typeof address!=='string');const port=address.port;await new Promise<void>(r=>probe.close(()=>r()));
   const base=`http://127.0.0.1:${port}`;
   const secret=`test-key-${randomUUID()}`;
-  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:secret},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:secret,OUTPUT_ROOT:tempOut()},stdio:['ignore','pipe','pipe']});
   let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
   try {
     let ready=false;
@@ -45,14 +53,14 @@ test('HTTP: chat incremental, confirmación, descarga aislada, errores y segurid
     assert.ok((await chat('leer')).some(e=>e.type==='tool_result'&&contracts.proveedor_leer_solicitud.output.safeParse(e.result).success));
     const historyResponse=await fetch(`${base}/api/sessions/${session.session_id}`,{headers});assert.equal(historyResponse.status,200);const history=z.object({history:z.array(z.object({type:z.string(),role:z.string().optional()}))}).parse(await historyResponse.json());assert.ok(history.history.some(e=>e.role==='user'));
     assert.equal((await fetch(`${base}/api/sessions/${session.session_id}`,{headers:{'X-Session-Id':session2.session_id}})).status,401);
-    const health=z.object({provider:z.string(),model:z.string(),configured:z.boolean()}).parse(await (await fetch(`${base}/api/health`)).json());assert.equal(health.provider,'openai');assert.equal(health.configured,true);
+    const health=z.object({provider:z.string(),model:z.string(),configured:z.boolean()}).parse(await (await fetch(`${base}/api/health`)).json());assert.equal(health.provider,'anthropic');assert.equal(health.configured,true);
     assert.equal(logs.includes(secret),false);
   } finally {child.kill('SIGTERM');await once(child,'exit');}
 });
 async function startServer(env:Record<string,string>) {
   const probe=createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');
   const address=probe.address();assert.ok(address&&typeof address!=='string');const port=address.port;await new Promise<void>(r=>probe.close(()=>r()));
-  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:'',...env},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['--import','tsx','src/server.ts'],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',LLM_API_KEY:'',OUTPUT_ROOT:tempOut(),...env},stdio:['ignore','pipe','pipe']});
   return {child,base:`http://127.0.0.1:${port}`};
 }
 test('HTTP: FECHA_EVALUACION permite el guion §11 hasta ENVIO-SIMULADO.md y rechaza fechas inválidas o futuras',async()=>{

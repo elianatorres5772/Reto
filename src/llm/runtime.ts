@@ -1,24 +1,29 @@
 import { z } from 'zod';
 import type { LlmAdapter, Message, ToolDefinition } from './adapter.js';
 import { OpenAIAdapter } from './openai.js';
+import { AnthropicAdapter, ANTHROPIC_DEFAULT_MODEL } from './anthropic.js';
+// Proveedor activo: anthropic por defecto; openai se conserva como alternativa del mismo contrato.
+export const llmProvider=()=>process.env.LLM_PROVIDER||'anthropic';
+export const llmModel=()=>process.env.LLM_MODEL||(llmProvider()==='openai'?'gpt-4.1-mini':ANTHROPIC_DEFAULT_MODEL);
+export function createAdapter():LlmAdapter {return llmProvider()==='openai'?new OpenAIAdapter(llmModel()):new AnthropicAdapter(llmModel());}
 const positive=(value:unknown,fallback:number,max:number)=>z.coerce.number().int().min(1).max(max).safeParse(value).data??fallback;
 export function modelLimits() {return {
  iterations:positive(process.env.AGENT_MAX_ITERATIONS,25,25),
  sessionTokens:positive(process.env.LLM_MAX_SESSION_TOKENS,100000,1000000),
- outputTokens:positive(process.env.LLM_MAX_OUTPUT_TOKENS,500,2000),
+ outputTokens:positive(process.env.LLM_MAX_OUTPUT_TOKENS,4000,16000),
  dailyTokens:positive(process.env.LLM_MAX_DAILY_TOKENS,1000000,10000000),
- timeoutMs:positive(process.env.LLM_TIMEOUT_MS,15000,60000)
+ timeoutMs:positive(process.env.LLM_TIMEOUT_MS,30000,120000)
 };}
 // Límite global conservador por proceso: crear otra sesión no reinicia este contador.
 let day='',dailyReserved=0;
-export function createModelRuntime(adapter:LlmAdapter=new OpenAIAdapter(),limits=modelLimits()) {
+export function createModelRuntime(adapter:LlmAdapter=createAdapter(),limits=modelLimits()) {
  let reserved=0;
  let lastError='';
  return {
   adapter,limits,
   get reservedTokens(){return reserved;},get lastError(){return lastError;},
   async request(messages:Message[],tools:ToolDefinition[],name:string,schema:unknown):Promise<unknown> {
-   if((process.env.LLM_PROVIDER??'openai')!==adapter.provider){lastError='Proveedor LLM no soportado por el adaptador configurado.';return null;}
+   if(llmProvider()!==adapter.provider){lastError='Proveedor LLM no soportado por el adaptador configurado.';return null;}
    // Un token consume al menos un byte UTF-8; se reserva la carga completa más margen y salida máxima.
    const upper=Buffer.byteLength(JSON.stringify({messages,tools,schema}),'utf8')+1024+limits.outputTokens;
    const now=new Date().toISOString().slice(0,10);if(day!==now){day=now;dailyReserved=0;}

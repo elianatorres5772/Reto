@@ -22,7 +22,7 @@ Todas son opcionales y están en [.env.example](.env.example), sin valores secre
 
 | Variable | Uso |
 |---|---|
-| `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL` | Proveedor LLM (OpenAI `gpt-4.1-mini` por defecto). La clave solo vive en el backend; se oculta en logs y respuestas. |
+| `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL` | Clave de Anthropic y modelo (Claude `claude-opus-5-5` por defecto; `LLM_PROVIDER=openai` sigue disponible). La clave solo vive en el backend; se oculta en logs y respuestas. Guía: [README_LLM.md](README_LLM.md). |
 | `AGENT_MAX_ITERATIONS`, `LLM_MAX_SESSION_TOKENS`, `LLM_MAX_DAILY_TOKENS`, `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_MS` | Tope de iteraciones por turno (25), presupuesto de tokens por sesión y por día, y timeout al proveedor. |
 | `FECHA_EVALUACION` | Fecha `YYYY-MM-DD` (no futura) con la que se evalúan las vigencias de los soportes. Vacía: fecha UTC actual. Ver [Guion de la demo](#guion-de-la-demo). |
 | `PORT`, `HOST`, `PUBLIC_ORIGIN`, `CHAT_RATE_LIMIT` | Puerto, interfaz (`0.0.0.0` en contenedores), origen HTTPS exacto al publicar y límite de POST por minuto e IP. |
@@ -90,7 +90,7 @@ pnpm run build
 agent/prompt.md                     comportamiento (system prompt)
 src/server.ts                       API HTTP y sesiones
 src/agent/                          ciclo del agente, confirmación humana, uso del LLM
-src/llm/adapter.ts, openai.ts       interfaz del proveedor e implementación
+src/llm/adapter.ts, anthropic.ts    interfaz del proveedor e implementación (Claude; openai.ts como alternativa)
 src/tools/proveedor.ts              herramientas (cada export → proveedor_<export>)
 src/knowledge/registro-proveedor.md conocimiento del proceso
 web/                                front: chat modal y flujo documental

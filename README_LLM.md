@@ -1,10 +1,8 @@
-# Clave LLM: configuración opcional del componente conservado
+# Clave LLM: Claude (Anthropic)
 
-**La pantalla de preparación documental no utiliza el LLM y funciona sin clave.** Identifica los campos de los mapas JSON, consulta el maestro, genera formularios y reúne soportes mediante herramientas deterministas.
+El chat del agente (ventana modal) usa la API `/api/chat`. Con `LLM_API_KEY`, Claude clasifica la intención de cada mensaje y elige la evidencia para responder consultas. Sin clave, se usan palabras clave y todo lo demás funciona igual. El flujo documental por botones nunca llama al modelo.
 
-El chat del agente (ventana modal) usa la API `/api/chat`. Con `LLM_API_KEY`, el modelo clasifica la intención de cada mensaje y selecciona evidencia para las consultas; sin clave, se usan palabras clave. El flujo documental por botones nunca llama al modelo.
-
-Si una integración técnica necesita usar ese componente:
+## Configurar
 
 1. Crea `.env` junto a `package.json`, solo si no existe:
 
@@ -12,11 +10,30 @@ Si una integración técnica necesita usar ese componente:
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-2. Abre `.env` en Visual Studio Code y coloca tu clave después de `LLM_API_KEY=`. Mantén `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4.1-mini`, o un modelo compatible al que tengas acceso.
+2. Abre `.env` y pega tu clave de Anthropic después de `LLM_API_KEY=`. La clave se obtiene en https://console.anthropic.com/settings/keys. La API de Claude se factura aparte de una suscripción a Claude.ai. Deja `LLM_PROVIDER=anthropic` y `LLM_MODEL=claude-opus-5-5`.
 3. Guarda y reinicia el servidor con `pnpm run dev`.
+4. Abre el chat y escribe una consulta libre, por ejemplo: `¿Qué soportes le faltan a este caso?`. Si la clave funciona, la respuesta cita la evidencia de las herramientas. Si falla, el chat muestra el motivo (clave rechazada, límite de solicitudes, timeout) y la sesión sigue disponible.
 
-Obtén la clave en https://platform.openai.com/api-keys. La plataforma API requiere saldo o facturación independiente de una suscripción de ChatGPT. No compartas claves ni subas `.env` al repositorio.
+`GET /api/health` informa el proveedor, el modelo y si hay clave cargada, no si la clave es válida. No compartas la clave ni subas `.env` al repositorio (`.gitignore` lo excluye). Para publicar, define `LLM_API_KEY` como variable secreta del servicio de hosting.
 
-`GET /api/health` informa si hay clave cargada, no si la conexión autenticada funciona. Para comprobar el componente opcional, crea una sesión y usa `/api/chat` con `X-Session-Id` y JSON `{caso_id,message}` mediante un cliente de API; no se necesita esta comprobación para preparar documentos desde la pantalla.
+## Cómo se usa el modelo
 
-Los límites `LLM_MAX_SESSION_TOKENS`, `LLM_MAX_DAILY_TOKENS`, `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_MS` y `AGENT_MAX_ITERATIONS` se mantienen para ese componente. Las claves se leen solo en backend; no se incorporan a frontend, archivos de salida o auditoría. La entrega documental no consume tokens.
+[src/llm/anthropic.ts](src/llm/anthropic.ts) implementa `LlmAdapter.enviar(mensajes, herramientas, opciones)` con el SDK oficial `@anthropic-ai/sdk`:
+
+- **Salida JSON con esquema:** se usa `output_config.format` con `type: "json_schema"`. La respuesta siempre cumple el esquema de intención o de selección de evidencia, y además se vuelve a validar con zod.
+- **Esfuerzo bajo** (`output_config.effort: "low"`): clasificar y elegir evidencia es una tarea corta. Claude Opus 5.5 siempre razona, y ese razonamiento cuenta dentro de `LLM_MAX_OUTPUT_TOKENS` (4000 por defecto).
+- **Herramientas descritas, no ejecutadas por el modelo:** se envían las cinco herramientas con `tool_choice: "none"`. El modelo conoce sus contratos, pero la aplicación decide qué se ejecuta, y la puerta de confirmación sigue en el servidor.
+- **Respaldo ante rechazos:** si un clasificador de seguridad declina la solicitud, la API la reintenta en otro modelo (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
+- **Errores claros:** timeout, clave rechazada y límite de solicitudes se convierten en mensajes en español, sin la clave ni trazas.
+
+## Límites
+
+| Variable | Defecto | Uso |
+|---|---|---|
+| `AGENT_MAX_ITERATIONS` | 25 | Llamadas a herramientas y al modelo por turno. |
+| `LLM_MAX_OUTPUT_TOKENS` | 4000 | `max_tokens` por llamada, incluido el razonamiento. |
+| `LLM_MAX_SESSION_TOKENS` | 100000 | Presupuesto reservado por sesión. |
+| `LLM_MAX_DAILY_TOKENS` | 1000000 | Presupuesto del proceso por día UTC. |
+| `LLM_TIMEOUT_MS` | 30000 | Timeout por llamada. |
+
+Para usar OpenAI en lugar de Claude, define `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4.1-mini`; el adaptador de OpenAI sigue disponible con el mismo contrato.

@@ -20,11 +20,11 @@ test('Consultas LLM leen herramientas, responden con evidencia, cancelan permiso
  const payloads:Payload[]=[];
  globalThis.fetch=async(_url,init)=>{
   const body=JSON.parse(String(init?.body));
-  const payload=JSON.parse(body.messages[1].content) as Payload;payloads.push(payload);
-  assert.equal(body.messages[0].role,'system');
+  const payload=JSON.parse(body.messages[0].content) as Payload;payloads.push(payload);
+  assert.equal(body.messages[0].role,'user');assert.match(body.system,/Agente de registro como proveedor/);assert.equal(body.output_config.format.type,'json_schema');
   if(failed)return new Response('secret-test',{status:401});
   const answer=payload.stage==='intent'?{intent:'consulta'}:invalid?{status:'answered',evidence_ids:[99999]}:{status:'answered',evidence_ids:[payload.evidence.find(e=>e.label==='solicitud · cliente')!.id]};
-  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
+  return new Response(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:'claude-opus-5-5',content:[{type:'text',text:JSON.stringify(answer)}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}),{status:200,headers:{'Content-Type':'application/json'}});
  };
  try {
   const session=createSession({today:()=> '2026-08-25'});

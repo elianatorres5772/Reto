@@ -53,7 +53,8 @@ src/agent/confirmation.ts        Permisos humanos por turno
 src/agent/answers.ts             Evidencia y respuestas verificables
 src/agent/llm.ts                 Intenciones y consultas del agente
 src/llm/adapter.ts               Interfaz independiente del proveedor
-src/llm/openai.ts                Peticiones a OpenAI
+src/llm/anthropic.ts             Peticiones a Claude con el SDK oficial (por defecto)
+src/llm/openai.ts                Peticiones a OpenAI (alternativa)
 src/llm/runtime.ts               Presupuestos y configuración del modelo
 src/server.ts              API, sesiones y recursos estáticos
 web/                        HTML, CSS, JavaScript y recursos locales
@@ -194,13 +195,15 @@ Esto evita publicar valores inventados, pero no garantiza que el modelo seleccio
 
 En `src/agent/llm.ts`, `localIntent` reconoce comandos exactos sin gastar tokens. `chooseIntent` usa el modelo para lenguaje natural y valida el enum. `answerQuestion` usa el contrato de selección de evidencia. `requestModel` lee prompt y conocimiento, genera esquemas JSON desde Zod y delega a un runtime; no contiene el prompt como literal largo.
 
-`src/llm/adapter.ts` define `Message`, `ToolDefinition`, `ModelReply` y `LlmAdapter`. Es un contrato propio independiente de OpenAI. Una implementación alternativa puede inyectarse al crear la sesión.
+`src/llm/adapter.ts` define `Message`, `ToolDefinition`, `ModelReply` y `LlmAdapter`. Es un contrato propio, independiente del proveedor. Una implementación alternativa puede inyectarse al crear la sesión.
 
-`OpenAIAdapter.enviar` construye una petición HTTPS, usa la clave solo en Authorization, aplica timeout, valida respuesta y retorna datos o error controlado. Descarta cuerpos de error y trazas del proveedor. Recibe contratos de herramientas, pero `tool_choice:none` conserva la ejecución en el agente. La respuesta real sigue siendo JSON estructurado de intención/evidencia.
+`AnthropicAdapter.enviar` (por defecto) usa el SDK oficial `@anthropic-ai/sdk`: separa el system prompt, envía las herramientas con `tool_choice: none`, pide salida JSON con `output_config.format` (`json_schema`) y esfuerzo `low`, activa `fallbacks: "default"` y convierte timeout, clave rechazada, límite de solicitudes y rechazos en errores controlados sin exponer la clave.
+
+`OpenAIAdapter.enviar` (alternativa) construye una petición HTTPS, usa la clave solo en Authorization, aplica timeout, valida respuesta y retorna datos o error controlado. Descarta cuerpos de error y trazas del proveedor. Recibe contratos de herramientas, pero `tool_choice:none` conserva la ejecución en el agente. La respuesta real sigue siendo JSON estructurado de intención/evidencia.
 
 En `src/llm/runtime.ts`, `modelLimits` lee límites numéricos con valores seguros predeterminados. `createModelRuntime` reserva presupuesto antes de llamar al proveedor. La reserva incluye bytes UTF-8, margen y salida máxima; por eso es conservadora. Se acumula por sesión y en un contador diario del proceso. No devolver reservas evita que una API sin `usage` o una llamada fallida permita uso ilimitado. `lastError` permite explicar el bloqueo al chat.
 
-El contador diario no se comparte entre réplicas y se pierde al reiniciar. El hosting y OpenAI deben tener límites adicionales si el aplicativo se usa en producción.
+El contador diario no se comparte entre réplicas y se pierde al reiniciar. El hosting y la cuenta del proveedor LLM deben tener límites adicionales si el aplicativo se usa en producción.
 
 ## 12. Servidor: `src/server.ts`
 
