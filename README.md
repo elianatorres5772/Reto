@@ -22,10 +22,22 @@ Todas son opcionales y están en [.env.example](.env.example), sin valores secre
 
 | Variable | Uso |
 |---|---|
-| `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL` | Clave de Anthropic y modelo (Claude `claude-opus-5-5` por defecto; `LLM_PROVIDER=openai` sigue disponible). La clave solo vive en el backend; se oculta en logs y respuestas. Guía: [README_LLM.md](README_LLM.md). |
+| `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL` | Clave de Anthropic y modelo (Claude `claude-opus-5-5` por defecto; `LLM_PROVIDER=openai` sigue disponible). La clave solo vive en el backend; se oculta en logs y respuestas. Ver [Clave de Claude](#clave-de-claude). |
 | `AGENT_MAX_ITERATIONS`, `LLM_MAX_SESSION_TOKENS`, `LLM_MAX_DAILY_TOKENS`, `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_MS` | Tope de iteraciones por turno (25), presupuesto de tokens por sesión y por día, y timeout al proveedor. |
 | `FECHA_EVALUACION` | Fecha `YYYY-MM-DD` (no futura) con la que se evalúan las vigencias de los soportes. Vacía: fecha UTC actual. Ver [Guion de la demo](#guion-de-la-demo). |
 | `PORT`, `HOST`, `PUBLIC_ORIGIN`, `CHAT_RATE_LIMIT` | Puerto, interfaz (`0.0.0.0` en contenedores), origen HTTPS exacto al publicar y límite de POST por minuto e IP. |
+
+## Clave de Claude
+
+1. Copia `.env.example` a `.env` y pega tu clave de https://console.anthropic.com/settings/keys en `LLM_API_KEY=`.
+2. Reinicia con `pnpm run dev`. `GET /api/health` debe mostrar `"configured":true` y `"mode":"llm-tools"`.
+
+Con la clave, Claude (`claude-opus-5-5`, SDK oficial `@anthropic-ai/sdk`) recibe las cinco herramientas y decide qué llamar en cada turno.
+- El servidor completa `campos` y `mapeo` con los resultados de la sesión y le envía al modelo resultados resumidos, sin valores del maestro.
+- Armar el paquete y simular el envío solo se ejecutan con la confirmación del turno siguiente.
+- Si el proveedor falla (timeout, clave rechazada, límite de solicitudes), el chat lo explica en lenguaje claro y continúa con palabras clave.
+
+Detalle en [SOLUCION.md](SOLUCION.md) §3 y §4.
 
 ## Guion de la demo
 
@@ -84,7 +96,13 @@ pnpm run build
 
 ## Publicar
 
-`render.yaml` y el `Dockerfile` dejan el servicio listo para Render. Los pasos están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Para la defensa, define `FECHA_EVALUACION=2026-08-25` en las variables del servicio. Cuando la URL responda, se anota arriba como link de prueba.
+`render.yaml` y el `Dockerfile` dejan el servicio listo para Render:
+
+1. En https://render.com, **New → Blueprint**, repositorio `elianatorres5772/Reto`, rama `dev`.
+2. Render pide `LLM_API_KEY` (clave de Claude; opcional) y `FECHA_EVALUACION` (`2026-08-25` para la defensa).
+3. Plan Free y **Apply**. Cuando esté **Live**, comprueba `<URL>/api/health` y anota la URL arriba como link de prueba.
+
+`PUBLIC_ORIGIN` no hace falta; Render asigna `PORT`. El plan gratuito se duerme tras unos minutos sin uso y la primera visita tarda cerca de un minuto; al reiniciar se pierden sesiones y `out/`.
 
 ## Estructura
 
@@ -98,7 +116,8 @@ src/knowledge/registro-proveedor.md conocimiento del proceso
 web/                                front: chat modal y flujo documental
 fixtures/                           entregados por Periferia (sin modificar)
 modulo/                             bonus: agente empaquetado (pnpm run module:check)
+tests/                              pruebas unitarias, HTTP y E2E (pnpm run check, pnpm run test:e2e)
 demo.ts, SOLUCION.md
 ```
 
-Más detalle: [SOLUCION.md](SOLUCION.md) (planteamiento y decisiones), [EXPLICACION_CODIGO.md](EXPLICACION_CODIGO.md), [docs/VALIDACION.md](docs/VALIDACION.md), [README_LLM.md](README_LLM.md) y el [PRD original](docs/PRD_RETO_01.md).
+Planteamiento, decisiones, cobertura y uso de IA: [SOLUCION.md](SOLUCION.md).

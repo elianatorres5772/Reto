@@ -161,7 +161,6 @@ Para producción también falta: autenticación y cuotas por usuario, persistenc
   - reporte parcial con plantilla corrupta y checklist en tres secciones;
   - pruebas unitarias, HTTP y E2E del guion;
   - este documento y el README.
-- **Herramienta de imágenes.** Fondo reprocesado a partir de una referencia visual (`docs/DISENO.md`).
 
 **Propuestas descartadas:**
 - Dejar que el modelo redacte respuestas o devuelva valores: lo reemplazamos por selección de evidencia.
@@ -169,7 +168,7 @@ Para producción también falta: autenticación y cuotas por usuario, persistenc
 - Desplazar la vigencia de los fixtures para la demo: se prefirió una fecha simulada, visible y validada.
 - Que el modelo pase `campos` y `mapeo` completos como argumentos: el servidor los completa desde la sesión.
 
-El historial de Git muestra cada cambio. `EXPLICACION_CODIGO.md` sirve para preparar la explicación línea a línea.
+El historial de Git muestra cada cambio.
 
 ## 10. Riesgos de producción y mitigación
 
