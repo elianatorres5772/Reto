@@ -63,7 +63,13 @@ export const server=createServer(async(req,res)=>{
     if(req.method==='GET' && url.pathname==='/api/cases') {const r=await catalog.listCases();json(res,r.ok?200:500,r);return;}
     if(req.method==='POST' && url.pathname==='/api/session') {
       for(const [id,entry] of sessions)if(Date.now()-entry.accessed>TTL)sessions.delete(id);
-      if(sessions.size>=MAX_SESSIONS){json(res,503,{ok:false,error:'Capacidad temporal agotada.'});return;}
+      // Memoria acotada sin bloquear a quien llega: al llegar al límite se descarta la sesión inactiva más antigua.
+      while(sessions.size>=MAX_SESSIONS) {
+        let oldest:string|null=null,accessed=Infinity;
+        for(const [id,entry] of sessions)if(entry.accessed<accessed){accessed=entry.accessed;oldest=id;}
+        if(!oldest)break;
+        sessions.delete(oldest);
+      }
       const id=randomUUID();sessions.set(id,{session:createSession({sessionId:id,today}),workflow:createRegistrationWorkflow({sessionId:id,today}),accessed:Date.now()});json(res,201,{ok:true,session_id:id});return;
     }
     if(req.method==='GET' && url.pathname==='/api/workflow') {

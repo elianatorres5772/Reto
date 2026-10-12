@@ -91,3 +91,17 @@ test('HTTP: FECHA_EVALUACION permite el guion §11 hasta ENVIO-SIMULADO.md y rec
     assert.ok(result?.ok);assert.equal(result.data?.ruta,'out/co-industrias-delta/ENVIO-SIMULADO.md');
   } finally {child.kill('SIGTERM');await once(child,'exit');}
 });
+test('HTTP: al llegar al límite de sesiones se descarta la más antigua y la nueva entra',async()=>{
+  const {child,base}=await startServer({});
+  try {
+    let ready=false;
+    for(let i=0;i<100;i++){try{const r=await fetch(`${base}/api/health`);if(r.ok){ready=true;break;}}catch{}await delay(50);}
+    assert.ok(ready,'El servidor debe arrancar');
+    const create=async()=>{const r=await fetch(`${base}/api/session`,{method:'POST'});assert.equal(r.status,201);return z.object({session_id:z.string()}).parse(await r.json()).session_id;};
+    const first=await create();
+    for(let i=0;i<100;i++)await create();
+    assert.equal((await fetch(`${base}/api/workflow`,{headers:{'X-Session-Id':first}})).status,401);
+    const latest=await create();
+    assert.equal((await fetch(`${base}/api/workflow`,{headers:{'X-Session-Id':latest}})).status,200);
+  } finally {child.kill('SIGTERM');await once(child,'exit');}
+});

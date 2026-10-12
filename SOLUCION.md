@@ -142,7 +142,7 @@ El agente solo **rellenaría campos y adjuntaría soportes**, con una vista prev
 | Ciclo del agente con LLM (§6.1, CA1–CA5) | Hecho | Claude con tool calling: tope de 25 iteraciones, confirmación en el servidor, log, errores claros y resultados resumidos sin valores sensibles. Probado con un modelo simulado en el formato de la API (`tests/agent-loop.test.ts`, `tests/prd.test.ts`); falta una corrida con clave real. |
 | API (§6.4) | Hecho | `/api/chat`, `/api/sessions/:id`, `/api/health`. |
 | `demo.ts` sin modelo | Hecho | Cuatro casos, cinco herramientas, sin clave. |
-| Link público (§9.3) | Pendiente | Docker y Render listos. Falta crear el servicio con una cuenta de hosting. |
+| Link público (§9.3) | Hecho | https://registro-proveedor-cvqp.onrender.com/ en Render (Docker, plan gratuito, con `FECHA_EVALUACION=2026-08-25`). |
 | Bonus `modulo/` | Hecho | Prompt, conocimiento y herramientas generados desde las mismas fuentes; `module:check` evita que diverjan. |
 
 Para producción también falta: autenticación y cuotas por usuario, persistencia cifrada, contadores de gasto compartidos y plantillas reales del cliente.

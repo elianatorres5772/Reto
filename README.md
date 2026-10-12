@@ -2,7 +2,7 @@
 
 Agente en TypeScript que lee la solicitud de un cliente, llena el formulario de registro como proveedor desde el repositorio maestro (Excel o PDF; para portal web, valores para copiar) y arma el paquete para la firma del representante legal. Nunca firma ni envía: antes de cualquier envío pide confirmación explícita, y "enviar" solo escribe `out/<caso>/ENVIO-SIMULADO.md`.
 
-**Link de prueba:** _pendiente de publicar_ (ver [Publicar](#publicar)). Acceso público, sin clave.
+**Link de prueba:** https://registro-proveedor-cvqp.onrender.com/ (acceso público, sin clave). Plan gratuito de Render: si estuvo inactivo, la primera visita tarda cerca de un minuto en despertar.
 
 ## Levantar en local (un comando)
 
