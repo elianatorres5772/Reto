@@ -91,7 +91,7 @@ test('Plantilla corrupta conserva el correo y permite preparar otra solicitud si
     await writeFile(join(f.root, 'casos/co-industrias-delta/plantilla-celdas.json'), '{ corrupto');
     await f.flow.prepare({ caso_id: 'co-industrias-delta' }, f.emit);
     assert.equal(f.flow.snapshot().phase, 'error'); assert.equal(f.flow.snapshot().error?.code, 'INVALID_FIXTURE');
-    assert.ok(f.flow.snapshot().solicitud?.solicitud.cuerpo); assert.equal(f.flow.snapshot().confirmation, null);
+    assert.ok(f.flow.snapshot().solicitud?.solicitud.cuerpo);assert.equal(f.flow.snapshot().mapeo?.plantilla_valida,false);assert.ok(f.flow.snapshot().mapeo?.evaluacion_soportes.soportes.length); assert.equal(f.flow.snapshot().confirmation, null);
     await f.flow.prepare({ caso_id: 'ec-corp-andina' }, f.emit);
     assert.equal(f.flow.snapshot().phase, 'awaiting_approval'); assert.equal(f.flow.snapshot().formulario?.formato, 'pdf');
   } finally { await f.close(); }

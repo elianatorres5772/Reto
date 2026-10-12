@@ -18,7 +18,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run test:e2e
 
 ## Escenarios
 
-1. Solicitud de correo → campos con fuente → XLSX correcto → permiso → ZIP con integridad y firma pendiente, sin chat ni envío.
+1. Solicitud de correo → campos con fuente → XLSX correcto → permiso → ZIP con integridad y firma pendiente, sin envío (flujo documental).
 2. Cancelación de paquete, formulario conservado y nueva autorización.
 3. Cambio de solicitud invalida el permiso anterior.
 4. Ecuador: PDF, RUC a revisar, campo y soporte ausentes, estado bloqueado.

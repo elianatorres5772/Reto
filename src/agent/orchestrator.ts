@@ -100,15 +100,16 @@ export function createSession(options:NonNullable<Parameters<typeof createProvee
         if(!read.ok)return;
         const mapped=await call('proveedor_mapear_campos',{caso:id,campos:read.data.campos});
         if(!mapped.ok)return;
-        const r=await call('proveedor_generar_formulario',{caso:id,mapeo:mapped.data});
-        if(r.ok){
-          formId=r.data.artefacto.id;
-          const m=r.data.mapeo,evaluation=m.evaluacion_soportes;
-          const actualizar=[...evaluation.faltantes,...evaluation.soportes.filter(s=>s.estado!=='disponible').map(s=>`${s.tipo} (${s.estado}${s.vigencia_hasta?`, vigencia ${s.vigencia_hasta}`:''})`)];
-          send({type:'message',text:`Resumen del caso ${id}\nFormulario: ${r.data.ruta}\nCampos llenos (${m.llenos.length}): ${m.llenos.map(f=>f.etiqueta).join(', ')||'ninguno'}\nCampos faltantes: ${m.faltantes.map(f=>f.etiqueta).join(', ')||'ninguno'}\nRequieren confirmación: ${m.requiere_confirmacion.map(f=>`${f.etiqueta} (${f.nota})`).join(', ')||'ninguno'}\nListo para firma según soportes: ${evaluation.listo_para_firma?'sí':'no'}\nSoportes a actualizar: ${actualizar.join(', ')||'ninguno'}`});
-          if(r.data.formato_no_soportado){send({type:'message',text:'Formato no soportado: portal web. Usa valores-portal.md y gestiona el registro manualmente; no compartas credenciales en el chat.'});return;}
-          if(intent==='preparar')ask('proveedor_armar_paquete',formId);
-        }
+        const m=mapped.data,evaluation=m.evaluacion_soportes;
+        const actualizar=[...evaluation.faltantes,...evaluation.soportes.filter(s=>s.estado!=='disponible').map(s=>`${s.tipo} (${s.estado}${s.vigencia_hasta?`, vigencia ${s.vigencia_hasta}`:''})`)];
+        const summary=(form:string)=>`Resumen del caso ${id}\nFormulario: ${form}\nCampos llenos (${m.llenos.length}): ${m.llenos.map(f=>f.etiqueta).join(', ')||'ninguno'}\nCampos faltantes: ${m.faltantes.map(f=>f.etiqueta).join(', ')||'ninguno'}\nRequieren confirmación: ${m.requiere_confirmacion.map(f=>`${f.etiqueta} (${f.nota})`).join(', ')||'ninguno'}\nListo para firma según soportes: ${evaluation.listo_para_firma?'sí':'no'}\nSoportes a actualizar: ${actualizar.join(', ')||'ninguno'}`;
+        const r=await call('proveedor_generar_formulario',{caso:id,mapeo:m});
+        // HU-5: sin formulario, el reporte de soportes y faltantes se entrega igual.
+        if(!r.ok){send({type:'message',text:`${summary('no generado')}\nAvisos: ${m.advertencias.join(' ')}`});return;}
+        formId=r.data.artefacto.id;
+        send({type:'message',text:summary(r.data.ruta)});
+        if(r.data.formato_no_soportado){send({type:'message',text:'Formato no soportado: portal web. Usa valores-portal.md y gestiona el registro manualmente; no compartas credenciales en el chat.'});return;}
+        if(intent==='preparar')ask('proveedor_armar_paquete',formId);
       } else if(intent==='paquete') {
         if(formId)ask('proveedor_armar_paquete',formId);
         else send({type:'message',text:'Primero pide «procesa el caso» o «formulario» para generar el borrador.'});

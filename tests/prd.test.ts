@@ -35,7 +35,7 @@ test('Contratos públicos describen argumentos, retornan strings y rechazan mape
   assert.equal((await executePublic(s.ctx,'proveedor_armar_paquete',{caso:'hn-agroexport-sula'})).ok,false);
   s.gate.ask({action:'proveedor_armar_paquete',caseId:'hn-agroexport-sula',artifactId:form.data.artefacto.id,question:'¿Confirmas?'});s.gate.userTurn('sí');
   const pkg=await executePublic(s.ctx,'proveedor_armar_paquete',{caso:'hn-agroexport-sula'});assert.ok(pkg.ok);assert.equal(pkg.data.listo_para_firma,true);
-  const checklist=await readFile(join(s.directory,pkg.data.checklist),'utf8');assert.match(checklist,/Referencias comerciales/);
+  const checklist=await readFile(join(s.directory,pkg.data.checklist),'utf8');assert.match(checklist,/Referencias comerciales/);for(const section of ['## Soportes presentes','## Soportes vencidos','## Soportes ausentes'])assert.ok(checklist.includes(section));
   const correo=await readFile(join(s.directory,pkg.data.borrador_correo),'utf8');assert.ok(!correo.includes('03100012345'));assert.ok(!correo.includes('SWIFT'));
   const falseGrant=await executePublic(s.ctx,'proveedor_simular_envio',{caso:'hn-agroexport-sula',confirmado:true});assert.equal(falseGrant.ok,false);
   s.gate.ask({action:'proveedor_simular_envio',caseId:'hn-agroexport-sula',artifactId:pkg.data.paquete.id,question:'¿Confirmas?'});s.gate.userTurn('sí');

@@ -45,6 +45,8 @@ test('JSON corrupto, caso inexistente y plantilla inválida son errores recupera
     const tools=createProveedorTools({fixturesRoot:dir});
     const missing=await tools.execute('proveedor_leer_solicitud',{caso_id:'co-inexistente'});assert.equal(missing.ok,false);if(!missing.ok)assert.equal(missing.error.code,'NOT_FOUND');
     await writeFile(join(dir,'casos',co,'plantilla-celdas.json'),'{ corrupto');
+    const partial=await tools.execute('proveedor_mapear_campos',{caso_id:co});assert.ok(partial.ok);
+    if(partial.ok){assert.equal(partial.data.plantilla_valida,false);assert.equal(partial.data.campos.length,0);assert.ok(partial.data.evaluacion_soportes.soportes.length>0);assert.match(partial.data.advertencias[0]!,/plantilla del caso está corrupta/);}
     const corrupt=await tools.execute('proveedor_generar_formulario',{caso_id:co});assert.equal(corrupt.ok,false);if(!corrupt.ok)assert.equal(corrupt.error.code,'INVALID_FIXTURE');
     await writeFile(join(dir,'casos',co,'plantilla-celdas.json'),'[{"etiqueta":"NIT"}]');
     const invalid=await tools.execute('proveedor_generar_formulario',{caso_id:co});assert.equal(invalid.ok,false);

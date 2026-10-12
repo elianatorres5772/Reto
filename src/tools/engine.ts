@@ -29,11 +29,31 @@ export function createProveedorTools(options: { fixturesRoot?:string; outputRoot
     if (!path.startsWith(base+sep)) throw new ControlledFault('INVALID_FIXTURE','Ruta del fixture no permitida.');
     return path;
   }
+  const INVALID_CONTRACT='El archivo no cumple el contrato del fixture.';
   async function json<T extends z.ZodTypeAny>(relative:string,schema:T):Promise<z.infer<T>> {
     const raw = await readFile(await safePath(relative),'utf8');
     const parsed = schema.safeParse(JSON.parse(raw));
-    if (!parsed.success) throw new ControlledFault('INVALID_FIXTURE','El archivo no cumple el contrato del fixture.');
+    if (!parsed.success) throw new ControlledFault('INVALID_FIXTURE',INVALID_CONTRACT);
     return parsed.data;
+  }
+  // Una plantilla corrupta, ausente o con un mapa inválido se informa como error de plantilla; rutas inseguras siguen siendo fallos.
+  async function template(formato:string,id:string):Promise<{fields:z.infer<typeof plantilla>;error:string|null}> {
+    let fields:z.infer<typeof plantilla>;
+    try {fields=await json(`casos/${id}/${formato==='xlsx'?'plantilla-celdas.json':'plantilla-campos.json'}`,plantilla);}
+    catch(error) {
+      const unreadable=error instanceof SyntaxError||(error instanceof ControlledFault&&error.message===INVALID_CONTRACT)||(error as NodeJS.ErrnoException).code==='ENOENT';
+      if(!unreadable)throw error;
+      return {fields:[],error:'La plantilla del caso está corrupta, ilegible o ausente.'};
+    }
+    if(formato==='xlsx' && fields.some(f=>!f.hoja || !f.celda_valor || !f.celda_etiqueta)) return {fields:[],error:'El mapa de celdas XLSX está incompleto.'};
+    const positions = new Set<string>();
+    for(const f of fields) {
+      if(!f.celda_valor) continue;
+      const key=`${f.hoja}/${f.celda_valor}`;
+      if(positions.has(key)) return {fields:[],error:'El mapa de la plantilla contiene destinos duplicados.'};
+      positions.add(key);
+    }
+    return {fields,error:null};
   }
   async function repositoryPath(file:string) {
     try {await access(resolve(root,'repositorio'));return `repositorio/${file}`;}catch{return file;}
@@ -63,16 +83,8 @@ export function createProveedorTools(options: { fixturesRoot?:string; outputRoot
   }
   async function map(id:string):Promise<z.infer<typeof mapping>> {
     const s = await readCase(id);
-    const fields = await json(`casos/${id}/${s.formato==='xlsx'?'plantilla-celdas.json':'plantilla-campos.json'}`,plantilla);
-    if(s.formato==='xlsx' && fields.some(f=>!f.hoja || !f.celda_valor || !f.celda_etiqueta)) throw new ControlledFault('INVALID_FIXTURE','Mapa de celdas XLSX incompleto.');
-    const positions = new Set<string>();
-    for(const f of fields) {
-      if(f.celda_valor) {
-        const key=`${f.hoja}/${f.celda_valor}`;
-        if(positions.has(key)) throw new ControlledFault('INVALID_FIXTURE','El mapa contiene destinos duplicados.');
-        positions.add(key);
-      }
-    }
+    // HU-5: una plantilla corrupta no detiene el reporte; se informa sin campos y se bloquea solo el formulario.
+    const {fields,error:templateError}=await template(s.formato,id);
     const glossary = await json('glosario-campos.json',z.record(z.string()));
     const master = await json(await repositoryPath('maestro.json'),maestroSchema);
     const campos = fields.map(f=> {
@@ -91,7 +103,8 @@ export function createProveedorTools(options: { fixturesRoot?:string; outputRoot
         equivalente_pais:campo==='nit'?fiscal[s.pais]??null:null};
     });
     const {evaluation}=await evaluateSupports(id,today());
-    return {evaluacion_soportes:evaluation,caso_id:id,formato:s.formato,campos,llenos:campos.filter(f=>f.estado==='lleno'),faltantes:campos.filter(f=>f.estado==='faltante'),requiere_confirmacion:campos.filter(f=>f.estado==='requiere_confirmacion'),faltantes_obligatorios:campos.filter(f=>f.obligatorio&&f.estado==='faltante').map(f=>f.etiqueta),advertencias:[
+    return {evaluacion_soportes:evaluation,caso_id:id,formato:s.formato,plantilla_valida:templateError===null,campos,llenos:campos.filter(f=>f.estado==='lleno'),faltantes:campos.filter(f=>f.estado==='faltante'),requiere_confirmacion:campos.filter(f=>f.estado==='requiere_confirmacion'),faltantes_obligatorios:campos.filter(f=>f.obligatorio&&f.estado==='faltante').map(f=>f.etiqueta),advertencias:[
+      ...(templateError?[`${templateError} No se identificaron campos: solicita al cliente una plantilla válida. El reporte de soportes sigue disponible.`]:[]),
       'El glosario define equivalencias; no acredita identificaciones fiscales locales ni aceptación legal en otro país.',
       ...(s.formato==='portal'?['Portal: gestión manual; no se accede a credenciales ni se automatiza el navegador.']:[])
     ]};
@@ -128,6 +141,7 @@ export function createProveedorTools(options: { fixturesRoot?:string; outputRoot
     async proveedor_mapear_campos({caso_id}) { return map(caso_id); },
     async proveedor_generar_formulario({caso_id}) {
       const m=await map(caso_id);
+      if(!m.plantilla_valida) throw new ControlledFault('INVALID_FIXTURE','No se generó el formulario porque la plantilla del caso está corrupta o es inválida. El reporte de soportes y faltantes sigue disponible.');
       let bytes:Uint8Array;
       if(m.formato==='portal') {
         const rows=m.campos.map(f=>`| ${f.etiqueta.replaceAll('|','\\|')} | ${f.valor===null?'[FALTANTE]':String(f.valor).replaceAll('|','\\|')} | ${f.estado} | ${f.fuente??'Sin fuente'} |`);
@@ -171,7 +185,14 @@ export function createProveedorTools(options: { fixturesRoot?:string; outputRoot
       if(createHash('sha256').update(formBytes).digest('hex')!==form.meta.sha256)throw new ControlledFault('IO_ERROR','El formulario cambió después de su generación. Vuelve a generar el borrador.');
       const files:Record<string,Uint8Array>={[form.meta.nombre]:formBytes,...soporteFiles};
       const statuses=evaluation.soportes,missing=evaluation.faltantes;
-      const checklist='# Checklist para firma\n\n'+statuses.map(s=>`- ${s.tipo}: ${s.estado} (vigencia: ${s.vigencia_hasta??'no informada'})`).join('\n')+'\n'+missing.map(t=>`- ${t}: ausente`).join('\n')+'\n\n## Campos faltantes\n'+m.faltantes.map(f=>`- ${f.etiqueta}`).join('\n')+'\n\n## Revisión de equivalencias\n'+m.requiere_confirmacion.map(f=>`- ${f.etiqueta}: ${f.nota}; equivalente ${f.equivalente_pais??'pendiente'}`).join('\n');
+      const list=(items:string[])=>items.length?items.join('\n'):'- ninguno';
+      const vigencia=(s:typeof statuses[number])=>`vigencia: ${s.vigencia_hasta??'no informada'}`;
+      const checklist=`# Checklist para firma\n\nListo para firma: ${missing.length===0&&statuses.every(s=>s.estado==='disponible')?'sí':'no'} (evaluado al ${at})\n\n`
+        +'## Soportes presentes\n'+list(statuses.filter(s=>s.estado==='disponible').map(s=>`- ${s.tipo} (${vigencia(s)})`))
+        +'\n\n## Soportes vencidos\n'+list(statuses.filter(s=>s.estado==='vencido').map(s=>`- ${s.tipo} (${vigencia(s)})`))
+        +'\n\n## Soportes ausentes\n'+list([...missing.map(t=>`- ${t}: no existe en el repositorio de soportes`),...statuses.filter(s=>s.estado==='archivo_faltante').map(s=>`- ${s.tipo}: archivo ${s.archivo} no encontrado`)])
+        +'\n\n## Campos faltantes\n'+list(m.faltantes.map(f=>`- ${f.etiqueta}`))
+        +'\n\n## Revisión de equivalencias\n'+list(m.requiere_confirmacion.map(f=>`- ${f.etiqueta}: ${f.nota}; equivalente ${f.equivalente_pais??'pendiente'}`))+'\n';
       const ready=missing.length===0&&statuses.every(s=>s.estado==='disponible');
       const correo=`# Borrador de correo — pendiente de revisión humana\n\nPara: ${s.de}\nAsunto: Registro como proveedor — documentación para revisión\n\nSe adjunta el formulario y los soportes de la solicitud seleccionada para revisión y firma del representante legal. Consulte el checklist para identificar pendientes. Este borrador no acredita firma ni aceptación del registro.\n\nNo se ha enviado este correo.\n`;
       const details={caso_id,ruta:route(caso_id,'paquete'),listo_para_firma:ready,checklist:route(caso_id,'paquete/checklist.md'),borrador_correo:route(caso_id,'paquete/borrador-correo.md'),formulario:form.meta,fecha_evaluacion:at,soportes:statuses,soportes_faltantes:missing,campos_faltantes:m.faltantes.map(f=>f.etiqueta),listo_para_simular:ready,firma:'pendiente' as const,advertencias:['Paquete de demostración: soportes ficticios y formulario sin firma. No enviar como registro real.','Vigencia evaluada con fechas del índice; antigüedad de emisión y aceptación extranjera requieren revisión humana.']};
