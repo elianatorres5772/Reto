@@ -1,5 +1,7 @@
 # Diseño actual de preparación documental
 
+**Paleta.** El verde de la marca es **#6dfd8c**: botones principales, acentos, bordes destacados, pasos activos, mensajes de la usuaria y tintes suaves del mismo tono en fondos (#e9fff0, #dcffe4, #c4fed1). Como #6dfd8c es muy claro, el texto sobre él es casi negro (#0b2414) y los textos que antes eran verde oscuro pasan a grises neutros (#1a1f1c, #3d4541, #5b6460), para mantener el contraste legible. La cabecera ya no usa imagen de fondo.
+
 La pantalla principal es un flujo de trabajo con entrada de solicitudes, correo, campos, soportes, autorización y descargas. Conserva la paleta verde manzana y usa el fondo de referencia como cabecera. El chat del agente se abre en una ventana modal (`web/chat.js`) desde el botón flotante **Conversar con el agente**: historial, indicador de pensando, tarjetas por herramienta y aviso de confirmación resaltado en ámbar. La captura actual se encuentra en `capturas/front-actual.png`. Se verifican escritorio y un tamaño móvil.
 
 El apartado siguiente documenta el origen de los recursos y el diseño conversacional anterior como historial, no como interfaz vigente.
@@ -11,7 +13,6 @@ La interfaz toma como referencia visual la imagen suministrada por el usuario: p
 - `web/index.html`: panel de conversación, bienvenida y controles existentes.
 - `web/styles.css`: composición adaptable, estados de foco y movimiento reducido.
 - `web/assets/assistant.svg`: avatar vectorial decorativo.
-- `web/assets/chat-background.png`: imagen de fondo preparada con la herramienta de imágenes a partir de la fotografía adjunta del usuario (mujer con portátil). Es una versión reprocesada con IA, no una copia binaria del archivo original; puede presentar diferencias en detalles del rostro y la escena.
 - `web/chat.js`: estado de conexión y procesamiento derivado de la sesión.
 
 Las imágenes se sirven desde el propio aplicativo, sin llamadas a servicios de imágenes externos. El servidor permite únicamente sus rutas explícitas. El diseño no modifica contratos, datos del proveedor, permisos de confirmación ni reglas de simulación.
